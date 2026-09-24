@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>One Wish Willow</title>
-  <meta name="description" content="Break the One Wish Willow. Make one wish. You only get one.">
-  <meta name="theme-color" content="#080706">
+  <meta name="description" content="Snap the One Wish Willow. Make one wish. You only get one.">
+  <meta name="theme-color" content="#030303">
   <meta property="og:title" content="One Wish Willow">
   <meta property="og:description" content="You only get one wish.">
   <meta property="og:type" content="website">
@@ -17,21 +17,18 @@
 </head>
 <body>
   <canvas id="scene"
-          tabindex="0"
-          role="button"
-          aria-label="The One Wish Willow. Press and hold the branch, then bend it until it breaks. With a keyboard, hold Space."></canvas>
+          tabindex="-1"
+          role="img"
+          aria-label="The One Wish Willow, a short wooden stick. Press on it and pull to snap it in half. With a keyboard, hold Space."></canvas>
 
   <div class="grain" aria-hidden="true"></div>
 
-  <header class="title" id="title">One Wish Willow</header>
+  <button class="gate" id="gate" type="button" aria-label="Begin">
+    <span class="gate-line">You only get <b>one wish.</b></span>
+    <span class="gate-go" id="gate-go">Tap to begin</span>
+  </button>
 
-  <div class="intro" id="intro">
-    <p class="tagline" id="tagline">You only get one wish.</p>
-    <p class="hint" id="hint">
-      <span class="hint-fine">Hold the branch. Bend it until it breaks.</span>
-      <span class="hint-coarse">Hold the branch with your finger. Bend it until it breaks.</span>
-    </p>
-  </div>
+  <p class="hint" id="hint" aria-live="polite">Press on the willow and pull to snap it.</p>
 
   <section class="wish" id="wish" aria-hidden="true">
     <div class="wish-inner">
@@ -63,8 +60,6 @@
   </section>
 
   <canvas id="fx" aria-hidden="true"></canvas>
-
-  <footer class="credit" id="credit">A fan-made tribute to the film <i>Obsession</i> · best with sound</footer>
 
   <noscript><p class="noscript">The One Wish Willow needs JavaScript to be broken.</p></noscript>
 

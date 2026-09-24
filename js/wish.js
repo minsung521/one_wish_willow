@@ -333,6 +333,9 @@ class Burn {
     this.chars.forEach((c, i) => { c.t0 = 0.45 + i * stagger; });
     this._raster();
     this.end = 0.45 + n * stagger + 3.2;
+    // hand over while the last embers are still rising
+    const handover = 0.45 + n * stagger + 1.3;
+    let handed = false;
     this.t = 0;
     let last = performance.now();
     const frame = (now) => {
@@ -340,10 +343,14 @@ class Burn {
       last = now;
       this.t += dt;
       this._draw(dt);
+      if (!handed && this.t >= handover) {
+        handed = true;
+        onDone();
+      }
       if (this.t < this.end) requestAnimationFrame(frame);
       else {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        onDone();
+        if (!handed) onDone();
       }
     };
     requestAnimationFrame(frame);

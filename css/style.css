@@ -1,5 +1,5 @@
 :root {
-  --bg: #080706;
+  --bg: #030303;
   --ink: #efe6d6;
   --ink-soft: rgba(239, 230, 214, 0.62);
   --ink-faint: rgba(239, 230, 214, 0.34);
@@ -59,7 +59,7 @@ body {
   inset: -50%;
   pointer-events: none;
   z-index: 40;
-  opacity: 0.075;
+  opacity: 0.06;
   mix-blend-mode: overlay;
   background-size: 180px 180px;
   animation: grain 0.9s steps(6) infinite;
@@ -75,93 +75,93 @@ body {
 }
 
 /* ------------------------------------------------------------------ */
-/* Title / intro copy                                                  */
+/* Gate: one tap to begin (it also unlocks sound for the snap)          */
 /* ------------------------------------------------------------------ */
 
-.title {
+.gate {
   position: fixed;
-  top: max(28px, env(safe-area-inset-top));
-  left: 0;
-  right: 0;
-  text-align: center;
-  font-weight: 400;
-  font-size: 11px;
-  letter-spacing: 0.62em;
-  text-indent: 0.62em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  opacity: 0;
-  transition: opacity 2.4s ease;
-  pointer-events: none;
-  z-index: 10;
-}
-.title.on { opacity: 1; }
-.title.dim { opacity: 0.45; }
-
-.intro {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: max(9vh, calc(env(safe-area-inset-bottom) + 56px));
-  text-align: center;
-  pointer-events: none;
-  z-index: 10;
+  inset: 0;
+  z-index: 35;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
   padding: 0 16px;
-  transition: opacity 0.7s ease;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--serif);
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 1s ease;
 }
-.intro.away { opacity: 0; transition-duration: 0.45s; }
-.intro.gone { opacity: 0; transition-duration: 0.25s; }
+.gate.leaving { opacity: 0; pointer-events: none; }
+.gate[hidden] { display: none; }
 
-.tagline {
-  margin: 0 0 18px;
+.gate-line {
   font-style: italic;
   font-weight: 300;
-  font-size: clamp(22px, 3.4vw, 30px);
-  letter-spacing: 0.02em;
-  color: var(--ink);
+  font-size: clamp(26px, 4.4vw, 38px);
+  letter-spacing: 0.01em;
   opacity: 0;
-  transform: translateY(6px);
-  transition: opacity 2.2s ease, transform 2.6s cubic-bezier(.2,.7,.2,1);
+  filter: blur(4px);
+  transition: opacity 2.4s ease, filter 2.6s ease;
 }
-.tagline.on { opacity: 0.92; transform: none; }
+.gate-line b {
+  font-style: normal;
+  font-weight: 500;
+  font-size: 0.72em;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.gate.on .gate-line { opacity: 0.92; filter: none; }
 
-.hint {
-  margin: 0;
+.gate-go {
   font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.28em;
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
   text-transform: uppercase;
   color: var(--ink-faint);
   opacity: 0;
   transition: opacity 1.6s ease;
 }
-.hint.on { opacity: 1; animation: breathe 4.8s ease-in-out 1.6s infinite; }
+.gate.go .gate-go { opacity: 1; animation: breathe 4.2s ease-in-out 1.6s infinite; }
+.gate:focus-visible .gate-go { color: var(--ink-soft); }
+
 @keyframes breathe {
   0%, 100% { opacity: 1; }
-  50%      { opacity: 0.45; }
-}
-.hint-coarse { display: none; }
-@media (pointer: coarse) {
-  .hint-fine { display: none; }
-  .hint-coarse { display: inline; }
+  50%      { opacity: 0.4; }
 }
 
-.credit {
+/* A quiet instruction that sits just under the stick, never in a corner. */
+.hint {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: max(14px, env(safe-area-inset-bottom));
+  top: 70%;
+  margin: 0;
+  padding: 0 16px;
   text-align: center;
   font-size: 11px;
-  letter-spacing: 0.08em;
-  color: rgba(239, 230, 214, 0.2);
+  font-weight: 500;
+  letter-spacing: 0.26em;
+  text-indent: 0.26em;
+  text-transform: uppercase;
+  color: rgba(239, 230, 214, 0.3);
   pointer-events: none;
   z-index: 10;
-  padding: 0 16px;
   opacity: 0;
-  transition: opacity 2s ease;
+  transition: opacity 1.4s ease;
 }
-.credit.on { opacity: 1; }
+.hint.on { opacity: 1; }
+.hint.away { opacity: 0; transition-duration: 0.35s; }
+@media (max-width: 480px) {
+  .hint { letter-spacing: 0.2em; text-indent: 0.2em; }
+}
 
 /* ------------------------------------------------------------------ */
 /* Wish                                                                */
@@ -193,6 +193,7 @@ body {
 
 .wish-q {
   margin: 0 0 clamp(28px, 6vh, 56px);
+  text-wrap: balance;
   font-weight: 300;
   font-style: italic;
   font-size: clamp(30px, 5.4vw, 46px);
@@ -362,6 +363,7 @@ body {
 }
 .ending-main {
   margin: 0;
+  text-wrap: balance;
   font-weight: 300;
   font-style: italic;
   font-size: clamp(28px, 4.6vw, 40px);
@@ -402,5 +404,5 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .grain { animation: none; }
-  .hint.on { animation: none; }
+  .gate.go .gate-go { animation: none; }
 }

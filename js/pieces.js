@@ -1,158 +1,119 @@
-// Rigid-body halves after the snap. Each half keeps the shape it had at the
-// moment of breaking, then relaxes most of the bend out (green wood keeps a
-// little), falls, knocks against the floor and comes to rest.
+// The two halves after the snap are rigid bodies: they keep the exact
+// pixels they had in the stick, fall, knock against the floor and settle.
 
 import { clamp } from './util.js';
 
-export class Piece {
+export class RigidPiece {
   /**
-   * @param {object} bent  world geometry at the break {xs, ys, rs, us}
-   * @param {object} rest  same slice with the bend mostly relaxed
+   * @param {object} part  { canvas, wCss, hCss, ox, oy, samples } in stick-local CSS px
+   * @param {{x:number,y:number,ang:number}} pose  where the stick's local origin was in the world
+   * @param {number} floor  y of the floor under this piece
    */
-  constructor(bent, rest, caps, floor) {
-    const n = bent.xs.length;
-    this.n = n;
-    this.rs = bent.rs;
-    this.us = bent.us;
-    this.caps = caps;
+  constructor(part, pose, floor) {
+    this.part = part;
     this.floor = floor;
-
-    // centre of mass (weighted by cross-section)
+    const S = part.samples;
     let cx = 0, cy = 0, w = 0;
-    for (let i = 0; i < n; i++) {
-      const wi = bent.rs[i] * bent.rs[i];
-      cx += bent.xs[i] * wi;
-      cy += bent.ys[i] * wi;
+    for (const s of S) {
+      const wi = s.r * s.r;
+      cx += s.x * wi;
+      cy += s.y * wi;
       w += wi;
     }
     cx /= w;
     cy /= w;
-    this.pos = { x: cx, y: cy };
-    this.vel = { x: 0, y: 0 };
-    this.ang = 0;
-    this.omega = 0;
-
-    this.bx = new Float32Array(n);
-    this.by = new Float32Array(n);
-    for (let i = 0; i < n; i++) {
-      this.bx[i] = bent.xs[i] - cx;
-      this.by[i] = bent.ys[i] - cy;
-    }
-
-    // align the relaxed shape with the bent one (same centre, same chord)
-    let rx = 0, ry = 0;
-    for (let i = 0; i < n; i++) {
-      const wi = rest.rs[i] * rest.rs[i];
-      rx += rest.xs[i] * wi;
-      ry += rest.ys[i] * wi;
-    }
-    rx /= w;
-    ry /= w;
-    const chord = (xs, ys) => Math.atan2(ys[n - 1] - ys[0], xs[n - 1] - xs[0]);
-    const da = chord(bent.xs, bent.ys) - chord(rest.xs, rest.ys);
-    // rotation between the relaxed slice's own frame and this body's frame
-    this.da = da;
-    const c = Math.cos(da), s = Math.sin(da);
-    this.qx = new Float32Array(n);
-    this.qy = new Float32Array(n);
-    for (let i = 0; i < n; i++) {
-      const x = rest.xs[i] - rx;
-      const y = rest.ys[i] - ry;
-      this.qx[i] = x * c - y * s;
-      this.qy[i] = x * s + y * c;
-    }
-
+    this.com = { x: cx, y: cy };
+    this.lx = S.map((s) => s.x - cx);
+    this.ly = S.map((s) => s.y - cy);
+    this.rs = S.map((s) => s.r);
     let I = 0;
-    for (let i = 0; i < n; i++) {
-      const wi = bent.rs[i] * bent.rs[i];
-      I += (this.qx[i] * this.qx[i] + this.qy[i] * this.qy[i] + bent.rs[i] * bent.rs[i] * 0.5) * wi;
+    for (let i = 0; i < S.length; i++) {
+      const wi = this.rs[i] * this.rs[i];
+      I += (this.lx[i] * this.lx[i] + this.ly[i] * this.ly[i] + this.rs[i] * this.rs[i] * 0.5) * wi;
     }
     this.invMass = 1;
     this.invI = w / Math.max(1, I);
-
-    this.relax = 0;
-    this.relaxV = 0;
+    this.ang = pose.ang;
+    const c = Math.cos(pose.ang), s = Math.sin(pose.ang);
+    this.pos = { x: pose.x + cx * c - cy * s, y: pose.y + cx * s + cy * c };
+    this.vel = { x: 0, y: 0 };
+    this.omega = 0;
     this.asleep = false;
     this.still = 0;
-    this.lastClack = -1;
     this.grounded = 0;
-    this.lx = new Float32Array(n);
-    this.ly = new Float32Array(n);
-    this._local();
+    this.lastClack = -1;
   }
 
-  _local() {
-    const k = clamp(this.relax, 0, 1.3);
-    for (let i = 0; i < this.n; i++) {
-      this.lx[i] = this.bx[i] + (this.qx[i] - this.bx[i]) * k;
-      this.ly[i] = this.by[i] + (this.qy[i] - this.by[i]) * k;
-    }
-  }
-
-  settleNow() {
-    this.relax = 1;
-    this.relaxV = 0;
-    this._local();
-  }
-
-  world() {
-    const n = this.n;
-    const xs = new Float32Array(n);
-    const ys = new Float32Array(n);
+  /** Stick-local origin of this piece in the world, for saving/restoring. */
+  originPose() {
     const c = Math.cos(this.ang), s = Math.sin(this.ang);
-    for (let i = 0; i < n; i++) {
-      xs[i] = this.pos.x + this.lx[i] * c - this.ly[i] * s;
-      ys[i] = this.pos.y + this.lx[i] * s + this.ly[i] * c;
-    }
-    return { xs, ys, rs: this.rs, us: this.us };
+    return {
+      x: this.pos.x - (this.com.x * c - this.com.y * s),
+      y: this.pos.y - (this.com.x * s + this.com.y * c),
+      ang: this.ang,
+    };
   }
 
-  /**
-   * @param {number} dt
-   * @param {{g:number, left:number, right:number, onClack:function}} env
-   */
-  step(dt, env, time) {
-    // spring the bend out of the wood (slightly underdamped)
-    if (this.relax < 0.999 || Math.abs(this.relaxV) > 0.01) {
-      const k = 1600;
-      const c = 2 * 0.38 * Math.sqrt(k);
-      this.relaxV += (k * (1 - this.relax) - c * this.relaxV) * dt;
-      this.relax += this.relaxV * dt;
-      this._local();
-    }
-    if (this.asleep) return;
+  setOriginPose(p) {
+    const c = Math.cos(p.ang), s = Math.sin(p.ang);
+    this.ang = p.ang;
+    this.pos.x = p.x + this.com.x * c - this.com.y * s;
+    this.pos.y = p.y + this.com.x * s + this.com.y * c;
+  }
 
+  worldPoint(i) {
+    const c = Math.cos(this.ang), s = Math.sin(this.ang);
+    return {
+      x: this.pos.x + this.lx[i] * c - this.ly[i] * s,
+      y: this.pos.y + this.lx[i] * s + this.ly[i] * c,
+    };
+  }
+
+  draw(ctx) {
+    const p = this.part;
+    ctx.save();
+    ctx.translate(this.pos.x, this.pos.y);
+    ctx.rotate(this.ang);
+    ctx.translate(-this.com.x, -this.com.y);
+    ctx.drawImage(p.canvas, -p.ox, -p.oy, p.wCss, p.hCss);
+    ctx.restore();
+  }
+
+  step(dt, env, time) {
+    if (this.asleep) return;
     this.vel.y += env.g * dt;
     this.pos.x += this.vel.x * dt;
     this.pos.y += this.vel.y * dt;
     this.ang += this.omega * dt;
-    this.omega *= 1 - 0.25 * dt;
-
-    // walls keep the pieces on screen
-    if (this.pos.x < env.left && this.vel.x < 0) this.vel.x *= -0.4;
-    if (this.pos.x > env.right && this.vel.x > 0) this.vel.x *= -0.4;
+    this.omega *= 1 - 0.2 * dt;
 
     const c = Math.cos(this.ang), s = Math.sin(this.ang);
+
+    // keep the whole piece on screen
+    let minX = Infinity, maxX = -Infinity;
+    for (let i = 0; i < this.lx.length; i++) {
+      const wx = this.lx[i] * c - this.ly[i] * s;
+      if (wx - this.rs[i] < minX) minX = wx - this.rs[i];
+      if (wx + this.rs[i] > maxX) maxX = wx + this.rs[i];
+    }
+    if (this.pos.x + minX < env.left) {
+      this.pos.x = env.left - minX;
+      if (this.vel.x < 0) this.vel.x *= -0.3;
+    } else if (this.pos.x + maxX > env.right) {
+      this.pos.x = env.right - maxX;
+      if (this.vel.x > 0) this.vel.x *= -0.3;
+    }
+
     const contacts = [];
     let maxPen = 0;
-    for (let i = 0; i < this.n; i += 3) {
+    for (let i = 0; i < this.lx.length; i++) {
       const rx = this.lx[i] * c - this.ly[i] * s;
-      const ry = this.lx[i] * s + this.ly[i] * c;
-      const bottom = this.pos.y + ry + this.rs[i] * 0.95;
-      const pen = bottom - this.floor;
+      const ry = this.lx[i] * s + this.ly[i] * c + this.rs[i] * 0.92;
+      const pen = this.pos.y + ry - this.floor;
       if (pen > 0) {
-        contacts.push({ rx, ry: ry + this.rs[i] * 0.95, pen });
+        contacts.push({ rx, ry, pen });
         if (pen > maxPen) maxPen = pen;
       }
-    }
-    // also the very end
-    {
-      const i = this.n - 1;
-      const rx = this.lx[i] * c - this.ly[i] * s;
-      const ry = this.lx[i] * s + this.ly[i] * c;
-      const pen = this.pos.y + ry + this.rs[i] - this.floor;
-      if (pen > 0) contacts.push({ rx, ry: ry + this.rs[i], pen });
-      if (pen > maxPen) maxPen = pen;
     }
 
     if (contacts.length) {
@@ -165,16 +126,13 @@ export class Piece {
           const vcy = this.vel.y + this.omega * ct.rx;
           if (vcy <= 0) continue;
           if (pass === 0) hardest = Math.max(hardest, vcy);
-          const e = vcy > 140 ? 0.28 : 0;
+          const e = vcy > 150 ? 0.3 : 0;
           const denom = this.invMass + ct.rx * ct.rx * this.invI;
           const j = ((1 + e) * vcy) / denom;
           this.vel.y -= j * this.invMass;
           this.omega -= ct.rx * j * this.invI;
-          // friction
           const dt2 = this.invMass + ct.ry * ct.ry * this.invI;
-          let jt = -vcx / dt2;
-          const lim = 0.55 * j;
-          jt = clamp(jt, -lim, lim);
+          const jt = clamp(-vcx / dt2, -0.6 * j, 0.6 * j);
           this.vel.x += jt * this.invMass;
           this.omega += -ct.ry * jt * this.invI;
         }
@@ -184,7 +142,7 @@ export class Piece {
         env.onClack(this, clamp(hardest / 900, 0, 1));
       }
       this.omega *= 1 - clamp(4 * dt, 0, 1);
-      this.vel.x *= 1 - clamp(2.2 * dt, 0, 1);
+      this.vel.x *= 1 - clamp(2.4 * dt, 0, 1);
     }
 
     // resting contact: bleed off the jitter of a stick lying on a floor
@@ -208,32 +166,32 @@ export class Piece {
   }
 }
 
-// Chips of bark and wood thrown out at the snap; they stay where they land.
+// Splinters and bark crumbs thrown out at the snap; they stay where they land.
 export class Chips {
   constructor() {
     this.list = [];
   }
 
-  burst(x, y, dirX, dirY, scale, rand, floor, count = 34) {
+  burst(x, y, dirX, dirY, scale, rand, floor, count = 30) {
     for (let i = 0; i < count; i++) {
-      const spread = (rand() - 0.5) * 2.6;
+      const spread = (rand() - 0.5) * 2.4;
       const c = Math.cos(spread), s = Math.sin(spread);
       const bx = dirX * c - dirY * s;
       const by = dirX * s + dirY * c;
-      const sp = (140 + Math.pow(rand(), 1.6) * 620) * scale;
-      const long = rand() < 0.22;
-      const wood = rand() < 0.55;
+      const sp = (120 + Math.pow(rand(), 1.7) * 560) * scale;
+      const long = rand() < 0.3;
+      const wood = rand() < 0.6;
       this.list.push({
-        x: x + (rand() - 0.5) * 6,
-        y: y + (rand() - 0.5) * 6,
-        vx: bx * sp + (rand() - 0.5) * 120 * scale,
-        vy: by * sp - rand() * 220 * scale,
+        x: x + (rand() - 0.5) * 8 * scale,
+        y: y + (rand() - 0.5) * 8 * scale,
+        vx: bx * sp + (rand() - 0.5) * 110 * scale,
+        vy: by * sp - rand() * 200 * scale,
         a: rand() * Math.PI * 2,
-        w: (rand() - 0.5) * 30,
-        len: (long ? 5 + rand() * 7 : 1.2 + rand() * 2.8) * scale,
-        wid: (long ? 0.6 + rand() * 0.6 : 0.9 + rand() * 1.6) * scale,
-        col: wood ? [220 + rand() * 25, 200 + rand() * 25, 150 + rand() * 30] : [70 + rand() * 40, 46 + rand() * 25, 26 + rand() * 12],
-        floor: floor + (rand() - 0.3) * 26 * scale,
+        w: (rand() - 0.5) * 32,
+        len: (long ? 4 + rand() * 8 : 1.1 + rand() * 2.6) * scale,
+        wid: (long ? 0.6 + rand() * 0.7 : 0.9 + rand() * 1.5) * scale,
+        col: wood ? [214 + rand() * 30, 190 + rand() * 30, 142 + rand() * 32] : [56 + rand() * 36, 36 + rand() * 22, 22 + rand() * 12],
+        floor: floor + (rand() - 0.3) * 24 * scale,
         rest: false,
         bounced: 0,
       });
@@ -269,7 +227,7 @@ export class Chips {
       ctx.save();
       ctx.translate(c.x, c.y);
       ctx.rotate(c.a);
-      ctx.fillStyle = `rgba(${c.col[0] | 0},${c.col[1] | 0},${c.col[2] | 0},${(c.rest ? 0.75 : 1) * dim})`;
+      ctx.fillStyle = `rgba(${c.col[0] | 0},${c.col[1] | 0},${c.col[2] | 0},${(c.rest ? 0.7 : 1) * dim})`;
       ctx.fillRect(-c.len / 2, -c.wid / 2, c.len, c.wid);
       ctx.restore();
     }
