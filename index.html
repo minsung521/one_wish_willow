@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>One Wish Willow</title>
+  <meta name="description" content="Break the One Wish Willow. Make one wish. You only get one.">
+  <meta name="theme-color" content="#080706">
+  <meta property="og:title" content="One Wish Willow">
+  <meta property="og:description" content="You only get one wish.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="scene"
+          tabindex="0"
+          role="button"
+          aria-label="The One Wish Willow. Press and hold the branch, then bend it until it breaks. With a keyboard, hold Space."></canvas>
+
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="title" id="title">One Wish Willow</header>
+
+  <div class="intro" id="intro">
+    <p class="tagline" id="tagline">You only get one wish.</p>
+    <p class="hint" id="hint">
+      <span class="hint-fine">Hold the branch. Bend it until it breaks.</span>
+      <span class="hint-coarse">Hold the branch with your finger. Bend it until it breaks.</span>
+    </p>
+  </div>
+
+  <section class="wish" id="wish" aria-hidden="true">
+    <div class="wish-inner">
+      <h1 class="wish-q" id="wish-q">What do you wish for?</h1>
+      <div class="wish-field" id="wish-field">
+        <textarea id="wish-input"
+                  rows="1"
+                  maxlength="140"
+                  placeholder="I wish…"
+                  aria-label="Your one wish"
+                  autocomplete="off"
+                  autocapitalize="sentences"
+                  spellcheck="false"
+                  enterkeyhint="done"></textarea>
+        <span class="wish-line" aria-hidden="true"></span>
+        <span class="wish-count" id="wish-count" aria-hidden="true"></span>
+      </div>
+      <button class="hold" id="wish-hold" type="button" disabled>
+        <span class="hold-label">Hold to make your wish</span>
+        <span class="hold-track" aria-hidden="true"><span class="hold-fill" id="hold-fill"></span></span>
+      </button>
+      <p class="wish-note" id="wish-note">There is no second wish.</p>
+    </div>
+  </section>
+
+  <section class="ending" id="ending" aria-live="polite">
+    <p class="ending-main" id="ending-main"></p>
+    <p class="ending-sub" id="ending-sub"></p>
+  </section>
+
+  <canvas id="fx" aria-hidden="true"></canvas>
+
+  <footer class="credit" id="credit">A fan-made tribute to the film <i>Obsession</i> · best with sound</footer>
+
+  <noscript><p class="noscript">The One Wish Willow needs JavaScript to be broken.</p></noscript>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
