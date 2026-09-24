@@ -127,7 +127,8 @@ export class WishUI {
     if (!this.raf) {
       let last = performance.now();
       const tick = (now) => {
-        const dt = Math.min(0.05, (now - last) / 1000);
+        // wall-clock, so the hold takes HOLD_MS even when frames are slow
+        const dt = (now - last) / 1000;
         last = now;
         if (this.pressing) this.p += dt / (HOLD_MS / 1000);
         else this.p -= dt * 2.5;

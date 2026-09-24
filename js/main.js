@@ -177,7 +177,7 @@ function placeGate() {
     width: Math.round(r.x1 - r.x0 + pad * 2) + 'px',
     height: Math.round(r.y1 - r.y0 + pad * 2) + 'px',
   });
-  ui.gateTitle.style.top = Math.max(24, Math.round(r.y0 - (W < 640 ? 78 : 96))) + 'px';
+  ui.gateTitle.style.top = Math.max(24, Math.round(r.y0 - (W < 640 ? 120 : 150))) + 'px';
 }
 
 function paintBackground() {
@@ -986,11 +986,11 @@ const wish = new WishUI({
     wish.release(fxCanvas, () => {
       phase = 'done';
       setTimeout(() => {
-        ui.endMain.textContent = 'Your wish has been made.';
+        ui.endMain.textContent = 'Wait up to 24 hours for your wish to come true.';
         ui.endMain.classList.add('on');
       }, 500);
       setTimeout(() => {
-        ui.endSub.textContent = 'You only get one.';
+        ui.endSub.textContent = 'After granting your wish, the One Wish Willow™ loses its magical properties.';
         ui.endSub.classList.add('on');
       }, 3000);
       if (use3D) showCredit(4200);
@@ -1045,8 +1045,7 @@ async function boot() {
   ui.gate.classList.toggle('boxmode', use3D);
   layout();
   window.addEventListener('resize', layout);
-  ui.gateGo.textContent = coarse ? 'Tap to begin' : 'Click to begin';
-  ui.hint.textContent = coarse ? 'Press and pull to snap it.' : 'Press on the willow and pull to snap it.';
+  ui.gateGo.textContent = coarse ? 'Tap the box and just make a wish!' : 'Open the box and just make a wish!';
 
   if (record.state === 'wished') {
     phase = 'already';
@@ -1061,7 +1060,7 @@ async function boot() {
       ui.endMain.classList.add('on');
     }, 1600);
     setTimeout(() => {
-      ui.endSub.textContent = 'You only get one wish.';
+      ui.endSub.textContent = 'Only one wish per life per person. No multiple attempts.';
       ui.endSub.classList.add('on');
     }, 3800);
     showCredit(4400);
@@ -1089,7 +1088,7 @@ async function boot() {
       setTimeout(() => ui.gate.classList.add('on'), 700);
       showCredit(1600);
     } else {
-      ui.gateTitle.style.top = Math.round(H * 0.5 - 60) + 'px';
+      ui.gateTitle.style.top = Math.round(H * 0.5 - 90) + 'px';
       setTimeout(() => ui.gateTitle.classList.add('on'), 400);
       setTimeout(() => ui.gate.classList.add('on'), 400);
       setTimeout(() => ui.gate.classList.add('go'), 2200);

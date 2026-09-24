@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>One Wish Willow</title>
-  <meta name="description" content="Snap the One Wish Willow. Make one wish. You only get one.">
+  <meta name="description" content="One Wish Willow™. Make a wish and snap it in half. Single use. Irreversible. Unforgettable.">
   <meta name="theme-color" content="#030303">
   <meta property="og:title" content="One Wish Willow">
-  <meta property="og:description" content="You only get one wish.">
+  <meta property="og:description" content="Make a wish and snap it in half. You only get ONE WISH.">
   <meta property="og:type" content="website">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -23,17 +23,21 @@
 
   <div class="grain" aria-hidden="true"></div>
 
-  <p class="gate-title" id="gate-title">You only get <b>one wish.</b></p>
+  <div class="gate-title" id="gate-title">
+    <p class="brand">One Wish Willow<sup>™</sup></p>
+    <p class="brand-sub">Amaze your friends! You only get <b>ONE WISH</b></p>
+  </div>
 
-  <button class="gate" id="gate" type="button" aria-label="Open the One Wish Willow box">
-    <span class="gate-go" id="gate-go">Tap to begin</span>
+  <button class="gate" id="gate" type="button" aria-label="Open the One Wish Willow package">
+    <span class="gate-go" id="gate-go">Remove from the box and just make a wish!</span>
   </button>
 
-  <p class="hint" id="hint" aria-live="polite">Press on the willow and pull to snap it.</p>
+  <p class="hint" id="hint" aria-live="polite">Spark the middle and break in half</p>
 
   <section class="wish" id="wish" aria-hidden="true">
     <div class="wish-inner">
-      <h1 class="wish-q" id="wish-q">What do you wish for?</h1>
+      <p class="wish-kicker">State your wish clearly.</p>
+      <h1 class="wish-q" id="wish-q">What are you wishing for?</h1>
       <div class="wish-field" id="wish-field">
         <textarea id="wish-input"
                   rows="1"
@@ -51,7 +55,7 @@
         <span class="hold-label">Hold to make your wish</span>
         <span class="hold-track" aria-hidden="true"><span class="hold-fill" id="hold-fill"></span></span>
       </button>
-      <p class="wish-note" id="wish-note">There is no second wish.</p>
+      <p class="wish-note" id="wish-note">Single Use Only. Once made, it cannot be undone or repeated.<br>Consider long-term effects. Wishes are irreversible.</p>
     </div>
   </section>
 
@@ -63,6 +67,7 @@
   <canvas id="fx" aria-hidden="true"></canvas>
 
   <p class="credit" id="credit">
+    <span class="credit-mfr">Manufacturer: TABI Cat Curiosities · Use at your own risk.</span><br>
     3D model: <a href="https://sketchfab.com/3d-models/one-wish-willow-from-obsession-movie-7269f920284c4bb7a169ee110034d164" target="_blank" rel="noopener">“One Wish Willow from Obsession movie”</a>
     by <a href="https://sketchfab.com/alyxyuu" target="_blank" rel="noopener">AlyStation</a>
     on Sketchfab · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>

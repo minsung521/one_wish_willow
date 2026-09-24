@@ -1,10 +1,13 @@
 :root {
   --bg: #030303;
-  --ink: #efe6d6;
-  --ink-soft: rgba(239, 230, 214, 0.62);
-  --ink-faint: rgba(239, 230, 214, 0.34);
+  /* the package: cream card, one red ink */
+  --ink: #dcd9c8;
+  --ink-soft: rgba(220, 217, 200, 0.62);
+  --ink-faint: rgba(220, 217, 200, 0.36);
+  --red: #c4241f;
   --ember: #e8b877;
-  --serif: "Cormorant Garamond", "Cormorant", "EB Garamond", Georgia, "Times New Roman", serif;
+  --serif: "Nunito", "Trebuchet MS", "Segoe UI", Arial, sans-serif;
+  --display: "Lilita One", "Arial Rounded MT Bold", Impact, "Arial Black", sans-serif;
   --vvh: 100dvh;
   --vvtop: 0px;
 }
@@ -106,7 +109,61 @@ body {
   padding: 0;
   border-radius: 18px;
 }
-.gate.boxmode .gate-go { display: none; }
+.gate.boxmode .gate-go {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  margin-top: 28px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  display: inline-block;
+  opacity: 0;
+  color: var(--ink-faint);
+  transition: opacity 1.6s ease 1.2s;
+}
+.gate.boxmode.on .gate-go { opacity: 1; animation: breathe 4.2s ease-in-out 2.4s infinite; }
+@media (max-width: 480px) { .gate.boxmode .gate-go { font-size: 10px; letter-spacing: 0.16em; text-indent: 0.16em; white-space: normal; width: 90vw; } }
+.gate.boxmode:focus-visible { outline: 1px solid rgba(239, 230, 214, 0.25); outline-offset: 6px; }
+
+.gate-title {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 22%;
+  margin: 0;
+  padding: 0 16px;
+  text-align: center;
+  pointer-events: none;
+  z-index: 34;
+  opacity: 0;
+  filter: blur(4px);
+  transition: opacity 2.4s ease, filter 2.6s ease;
+}
+.gate-title.on { opacity: 1; filter: none; }
+.gate-title[hidden] { display: none; }
+.brand {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(34px, 6.4vw, 62px);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+}
+.brand sup { font-size: 0.32em; vertical-align: 0.9em; margin-left: 0.15em; letter-spacing: 0; }
+.brand-sub {
+  margin: 12px 0 0;
+  font-family: var(--serif);
+  font-weight: 600;
+  font-style: italic;
+  font-size: clamp(14px, 2vw, 18px);
+  letter-spacing: 0.02em;
+  color: var(--ink-soft);
+}
+.brand-sub b { font-style: normal; font-weight: 700; color: var(--red); letter-spacing: 0.08em; }
+
+.gate-go { display: none; }
 .gate.boxmode:focus-visible { outline: 1px solid rgba(239, 230, 214, 0.25); outline-offset: 6px; }
 
 .gate-title {
@@ -140,10 +197,10 @@ body {
 
 .gate-go {
   margin-top: 90px;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.34em;
-  text-indent: 0.34em;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
   text-transform: uppercase;
   color: var(--ink-faint);
   opacity: 0;
@@ -160,16 +217,17 @@ body {
   margin: 0;
   padding: 0 16px;
   text-align: center;
-  font-size: 11px;
-  line-height: 1.5;
+  font-size: 10.5px;
+  line-height: 1.6;
   letter-spacing: 0.03em;
-  color: rgba(239, 230, 214, 0.26);
+  color: rgba(220, 217, 200, 0.28);
   z-index: 36;
   opacity: 0;
   pointer-events: none;
   transition: opacity 1.8s ease;
 }
 .credit.on { opacity: 1; pointer-events: auto; }
+.credit-mfr { text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700; }
 .credit a { color: inherit; text-decoration: none; border-bottom: 1px solid rgba(239, 230, 214, 0.14); }
 .credit a:hover { color: rgba(239, 230, 214, 0.55); }
 .credit[hidden] { display: none; }
@@ -188,12 +246,10 @@ body {
   margin: 0;
   padding: 0 16px;
   text-align: center;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.26em;
-  text-indent: 0.26em;
-  text-transform: uppercase;
-  color: rgba(239, 230, 214, 0.3);
+  font-family: var(--display);
+  font-size: clamp(15px, 2vw, 19px);
+  letter-spacing: 0.06em;
+  color: rgba(220, 217, 200, 0.42);
   pointer-events: none;
   z-index: 10;
   opacity: 0;
@@ -233,14 +289,27 @@ body {
 }
 .wish.compact .wish-inner { margin-top: clamp(40px, calc(var(--vvh) * 0.1), 120px); }
 
+.wish-kicker {
+  margin: 0 0 14px;
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  text-transform: uppercase;
+  color: var(--red);
+  opacity: 0;
+  transition: opacity 2s ease 0.6s;
+}
+.wish.q-on .wish-kicker { opacity: 0.9; }
 .wish-q {
   margin: 0 0 clamp(28px, 6vh, 56px);
   text-wrap: balance;
-  font-weight: 300;
-  font-style: italic;
-  font-size: clamp(30px, 5.4vw, 46px);
-  line-height: 1.15;
-  letter-spacing: 0.005em;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(30px, 5vw, 46px);
+  line-height: 1.1;
+  letter-spacing: 0.01em;
   color: var(--ink);
   opacity: 0;
   filter: blur(6px);
@@ -272,8 +341,9 @@ body {
   caret-color: var(--ember);
   font-family: var(--serif);
   font-weight: 400;
-  font-size: clamp(21px, 3.2vw, 26px);
-  line-height: 1.4;
+  font-style: italic;
+  font-size: clamp(20px, 3vw, 24px);
+  line-height: 1.45;
   text-align: center;
   letter-spacing: 0.01em;
   -webkit-appearance: none;
@@ -327,9 +397,9 @@ body {
   color: var(--ink-soft);
   font-family: var(--serif);
   font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.3em;
-  text-indent: 0.3em;
+  font-weight: 700;
+  letter-spacing: 0.26em;
+  text-indent: 0.26em;
   text-transform: uppercase;
   cursor: pointer;
   opacity: 0;
@@ -364,10 +434,13 @@ body {
 }
 
 .wish-note {
-  margin: 14px 0 0;
-  font-style: italic;
-  font-size: 15px;
-  color: rgba(239, 230, 214, 0.3);
+  margin: 16px 0 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.7;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(220, 217, 200, 0.32);
   opacity: 0;
   transition: opacity 1.2s ease;
 }
@@ -406,28 +479,35 @@ body {
 .ending-main {
   margin: 0;
   text-wrap: balance;
-  font-weight: 300;
-  font-style: italic;
-  font-size: clamp(28px, 4.6vw, 40px);
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(26px, 4vw, 38px);
+  line-height: 1.15;
+  max-width: 22ch;
   color: var(--ink);
   opacity: 0;
   filter: blur(5px);
   transition: opacity 3s ease, filter 3.2s ease;
 }
 .ending-main.caps {
-  font-style: normal;
-  font-weight: 400;
+  font-family: var(--serif);
+  font-weight: 700;
   font-size: clamp(13px, 1.9vw, 16px);
-  letter-spacing: 0.42em;
-  text-indent: 0.42em;
+  letter-spacing: 0.36em;
+  text-indent: 0.36em;
   text-transform: uppercase;
   line-height: 2;
+  max-width: none;
 }
 .ending-main.on { opacity: 0.94; filter: none; }
 .ending-sub {
   margin: 22px 0 0;
-  font-style: italic;
-  font-size: clamp(17px, 2.4vw, 20px);
+  font-weight: 600;
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.7;
+  max-width: 40ch;
   color: var(--ink-faint);
   opacity: 0;
   transition: opacity 2.6s ease;

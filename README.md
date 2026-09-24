@@ -52,8 +52,11 @@ At the break, the same pixels are split along a jagged fracture. There are long 
 | `js/wish.js` | Wish prompt, press-and-hold confirm, and letters that burn away one by one |
 | `js/storage.js` | One-time rule: state lives in localStorage and is mirrored to a cookie |
 
+### Copy and type
+All on-screen text is taken from the One Wish Willow packaging as reproduced on the model's box texture (which matches the film prop) and from the official product site: "Remove from the box and just make a wish!", "Spark the middle and break in half", "What are you wishing for?", "State your wish clearly", "Single Use Only. Once made, it cannot be undone or repeated.", "Wait up to 24 hours for your wish to come true.", "Only one wish per life per person." The type pairs a chunky rounded display face (Lilita One) for headings, in the spirit of the box's arched title, with Nunito for the fine print, in the package's cream on a dark stage with its red as the one accent.
+
 ### Flow and sound
-The first screen shows the box. Tapping it plays a short, slightly warped novelty jingle with a pop ("open the package to magically jingle and a fun pop surprise", as the box says), and the willow rises out of the dissolving box.
+The first screen shows the box. Tapping it plays the film's One Wish Willow jingle (`assets/audio/jingle.wav`, the music-box cue cut from the supplied recording, normalised, with fades), and the willow rises out of the dissolving box. If the file fails to load, a synthesised jingle plays instead.
 
 That tap is also the user activation browsers need before they allow audio, so the snap can sound at the exact moment of the break. The snap is the only sound after that: a short, dry crack, with no sounds when the halves land.
 
