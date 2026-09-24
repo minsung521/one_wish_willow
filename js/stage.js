@@ -253,8 +253,9 @@ export class Stage {
 
     this.camera = new THREE.PerspectiveCamera(FOV, 1, 1, 10000);
 
-    scene.add(new THREE.HemisphereLight(0x7a6858, 0x060504, 0.42));
-    const key = new THREE.DirectionalLight(0xffdcb4, 2.5);
+    scene.add(new THREE.HemisphereLight(0x7a6858, 0x060504, 0.22));
+    // one tight pool of light from above, like the stage cone in the background
+    const key = new THREE.SpotLight(0xffdcb4, 1, 0, 0.2, 0.75, 2);
     this.key = key;
     scene.add(key);
     scene.add(key.target);
@@ -268,12 +269,16 @@ export class Stage {
     bark.side = THREE.DoubleSide;
     // the baked bark texture is very dark; lift it just enough to read under the
     // stage light, and make it matte: the baked roughness map is far too glossy
-    bark.color.setRGB(1.5, 1.32, 1.18);
+    // the baked colour map is blotchy; keep only its relief and use one flat, dark bark tone
+    bark.map = null;
+    bark.color.set(0x2c211a);
     bark.roughnessMap = null;
-    bark.roughness = 0.9;
+    bark.roughness = 0.82;
     bark.metalness = 0;
-    bark.envMapIntensity = 0.3;
-    if (bark.normalScale) bark.normalScale.set(1.0, 1.0);
+    bark.envMapIntensity = 0.2;
+    bark.transparent = true;
+    bark.opacity = 1;
+    if (bark.normalScale) bark.normalScale.set(1.6, 1.6);
     bark.needsUpdate = true;
     this.bark = bark;
     this.woodMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96, metalness: 0, flatShading: true, side: THREE.DoubleSide });
@@ -325,7 +330,10 @@ export class Stage {
     cam.far = D * 3;
     cam.lookAt(0, 0, 0);
     cam.updateProjectionMatrix();
-    this.key.position.set(-0.55 * D, 0.95 * D, 0.9 * D);
+    this.key.position.set(-0.5 * D, 1.0 * D, 0.7 * D);
+    // candela, scaled so the stick sees ~2.6 units of irradiance at its distance (1.32 D)
+    this.key.intensity = 3.2 * 1.74 * D * D;
+    this.key.distance = 4 * D;
     this.rim.position.set(0.7 * D, -0.15 * D, -1.0 * D);
   }
 

@@ -126,7 +126,8 @@ export class RigidPiece {
           const vcy = this.vel.y + this.omega * ct.rx;
           if (vcy <= 0) continue;
           if (pass === 0) hardest = Math.max(hardest, vcy);
-          const e = vcy > 150 ? 0.3 : 0;
+          // dry wood on a hard floor: one dull hop at most, then it lies down
+          const e = vcy > 260 ? 0.12 : 0;
           const denom = this.invMass + ct.rx * ct.rx * this.invI;
           const j = ((1 + e) * vcy) / denom;
           this.vel.y -= j * this.invMass;

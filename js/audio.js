@@ -19,6 +19,10 @@ export class Sound {
     this.amb = null;
     this.stressNodes = null;
     this.hold = null;
+    this.jingleData = null;
+    this.jingleBuf = null;
+    // the box's opening jingle: start fetching right away so it is ready for the tap
+    fetch('assets/audio/jingle.wav').then((r) => (r.ok ? r.arrayBuffer() : null)).then((d) => { this.jingleData = d; }).catch(() => {});
   }
 
   get live() {
@@ -311,7 +315,36 @@ export class Sound {
    * A party-popper pop, then a bright little toy fanfare played through a
    * cheap, warbling speaker, slightly out of tune.
    */
+  /** The recorded jingle from the film's box, if it loaded; else the synthesised one. */
   jingle() {
+    if (!this.ctx || this.ctx.state === 'closed') return;
+    if (this.jingleBuf) return this._playJingle(this.jingleBuf);
+    if (this.jingleData) {
+      const data = this.jingleData;
+      this.jingleData = null;
+      this.ctx.decodeAudioData(data.slice(0)).then((buf) => { this.jingleBuf = buf; this._playJingle(buf); }).catch(() => this.jingleSynth());
+      return;
+    }
+    this.jingleSynth();
+  }
+
+  _playJingle(buf) {
+    const ctx = this.ctx;
+    const t = this.now + 0.01;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const g = ctx.createGain();
+    g.gain.value = 0.8;
+    src.connect(g);
+    g.connect(this.master);
+    const send = ctx.createGain();
+    send.gain.value = 0.12;
+    g.connect(send);
+    send.connect(this.reverb);
+    src.start(t);
+  }
+
+  jingleSynth() {
     // Called inside the tap that unlocks audio: the context may still be
     // finishing its resume, which takes milliseconds, so this one sound is
     // scheduled either way.

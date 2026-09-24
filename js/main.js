@@ -26,7 +26,8 @@ const ui = {
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const coarse = window.matchMedia('(pointer: coarse)').matches;
 const THETA = -0.03;
-const OPEN_T = 1.9; // seconds from tapping the box to holding the willow
+const OPEN_T = 2.3; // seconds from tapping the box to holding the willow
+const BOX_GONE = 0.9; // the box has fully faded by then
 const BOX_TO_WILLOW = 1.428 / 1.835; // willow length / box length in the model
 
 // ------------------------------------------------------------------ state
@@ -506,17 +507,17 @@ function computePose() {
     ang: THETA + st.tilt + tra + Math.sin(time * 0.37) * 0.006 * idle,
   };
   if (phase === 'opening') {
-    const k = easeInOut(clamp((time - box.open - 0.3) / (OPEN_T - 0.3), 0, 1));
+    const k = easeInOut(clamp((time - box.open - BOX_GONE) / (OPEN_T - BOX_GONE), 0, 1));
     const bs = boxState();
-    pose = { x: lerp(bs.x, pose.x, k), y: lerp(bs.y - bs.lift, pose.y, k), ang: lerp(0, pose.ang, k) };
+    pose = { x: lerp(bs.x, pose.x, k), y: lerp(bs.y - 6, pose.y, k), ang: lerp(0, pose.ang, k) };
   }
 }
 
 /** Length of the willow on screen right now (it grows out of the box). */
 function stickLen() {
   if (phase !== 'opening') return L;
-  const k = easeInOut(clamp((time - box.open - 0.3) / (OPEN_T - 0.3), 0, 1));
-  return lerp(box.len * BOX_TO_WILLOW * 0.96, L, k);
+  const k = easeInOut(clamp((time - box.open - BOX_GONE) / (OPEN_T - BOX_GONE), 0, 1));
+  return lerp(box.len * BOX_TO_WILLOW * 0.9, L, k);
 }
 
 // ------------------------------------------------------------------ the box
@@ -534,9 +535,9 @@ function boxState() {
   base.scale = 1 + 0.03 * box.hover + 0.06 * box.pop;
   if (phase === 'opening') {
     const t = time - box.open;
-    base.opacity = 1 - smoothstep(0.25, 0.95, t);
-    base.lift -= smoothstep(0.15, 1.1, t) * 16;
-    base.scale *= 1 + smoothstep(0.1, 1, t) * 0.05;
+    base.opacity = 1 - smoothstep(0.2, BOX_GONE, t);
+    base.lift -= smoothstep(0.15, BOX_GONE, t) * 12;
+    base.scale *= 1 + smoothstep(0.1, BOX_GONE, t) * 0.04;
   }
   return base;
 }
@@ -593,8 +594,8 @@ function snap() {
   // spread them only as far as the screen has room for
   const room = Math.max(0, (W - 24 - L) / 2);
   const spread = clamp(room * 0.9, 24, 140);
-  left.vel = { x: px * 150 * s - spread * (0.75 + Math.random() * 0.4), y: py * 150 * s - 60 * s };
-  right.vel = { x: px * 160 * s + spread * (0.8 + Math.random() * 0.4), y: py * 160 * s - 50 * s };
+  left.vel = { x: px * 120 * s - spread * (0.75 + Math.random() * 0.4), y: py * 120 * s - 20 * s };
+  right.vel = { x: px * 130 * s + spread * (0.8 + Math.random() * 0.4), y: py * 130 * s - 15 * s };
   // a little roll about their own axis as they tumble (3D only)
   left.spin = 0;
   right.spin = 0;
@@ -704,7 +705,7 @@ function updatePieces(dt) {
   for (const p of pieces) {
     if (p.spinV == null) continue;
     p.spin += p.spinV * dt;
-    p.spinV *= Math.exp(-dt * (p.grounded ? 7 : 0.6));
+    p.spinV *= Math.exp(-dt * (p.grounded ? 12 : 0.6));
   }
   if (!piecesSaved && pieces.every((p) => p.asleep) && record.state !== 'fresh') savePieces();
 }
@@ -827,7 +828,9 @@ function drawPuffs() {
 
 function render3D() {
   const opening = phase === 'opening';
-  const showStick = (opening && time - box.open > 0.3) || ((phase === 'intro' || phase === 'idle') && !pieces.length);
+  const showStick = (opening && time - box.open > BOX_GONE) || ((phase === 'intro' || phase === 'idle') && !pieces.length);
+  // the willow fades up out of the dark once the box is gone
+  stage.bark.opacity = opening ? smoothstep(BOX_GONE, BOX_GONE + 0.7, time - box.open) : 1;
   if (phase === 'gate' || opening) {
     const b = boxState();
     softShadow(b.x, floorY, box.len * 0.46, 0, floorY - b.y + b.lift, box.len * 0.05);
