@@ -621,7 +621,7 @@ function snap() {
   flash = 1;
   shake = 1;
   punch = 1;
-  lightTarget = 0.6;
+  lightTarget = 0.52;
   lightRate = 0.26;
 
   record = { v: 2, seed, state: 'broken', sign, at: Date.now() };
@@ -981,13 +981,16 @@ const wish = new WishUI({
     saveRecord(record);
     sound.wishRelease();
     buzz(28);
-    lightTarget = 0.46;
+    lightTarget = 0.4;
     lightRate = 0.12;
     wish.release(fxCanvas, () => {
       phase = 'done';
       setTimeout(() => {
         ui.endMain.textContent = 'Wait up to 24 hours for your wish to come true.';
         ui.endMain.classList.add('on');
+        // the room sinks further as the waiting begins
+        lightTarget = 0.2;
+        lightRate = 0.1;
       }, 500);
       setTimeout(() => {
         ui.endSub.textContent = 'After granting your wish, the One Wish Willow™ loses its magical properties.';
@@ -1017,7 +1020,7 @@ function enter(e) {
   } else {
     phase = 'intro';
   }
-  lightTarget = 1;
+  lightTarget = 0.88;
   lightRate = 0.3;
   canvas.tabIndex = 0;
   // keyboard users land on the stick
@@ -1051,7 +1054,7 @@ async function boot() {
     phase = 'already';
     ui.gate.hidden = true;
     restorePieces();
-    lightTarget = 0.46;
+    lightTarget = 0.3;
     lightRate = 0.16;
     canvas.setAttribute('aria-label', 'The One Wish Willow lies broken in two.');
     setTimeout(() => {
@@ -1069,7 +1072,7 @@ async function boot() {
     phase = 'wish';
     ui.gate.hidden = true;
     restorePieces();
-    lightTarget = 0.6;
+    lightTarget = 0.52;
     lightRate = 0.2;
     canvas.setAttribute('aria-label', 'The One Wish Willow lies broken in two.');
     setTimeout(() => wish.show(), 1800);
@@ -1081,7 +1084,7 @@ async function boot() {
     ui.gate.addEventListener('pointerleave', () => { box.hoverTarget = false; });
     if (use3D) {
       // the box is the way in: it fades up in its light
-      lightTarget = 1;
+      lightTarget = 0.88;
       lightRate = 0.25;
       placeGate();
       setTimeout(() => ui.gateTitle.classList.add('on'), 700);
