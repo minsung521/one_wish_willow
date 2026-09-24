@@ -132,7 +132,7 @@ export function breakWillow(model, x0, ts, seed) {
   // the tear line around the circumference: short on the compression side,
   // ragged and long on the tension side
   const H = [];
-  for (let k = 0; k < 5; k++) H.push({ f: 1 + k * 2 + Math.floor(rand() * 2), p: rand() * 6.283, a: (rand() - 0.5) * r0 * (0.5 / (k + 1)) });
+  for (let k = 0; k < 4; k++) H.push({ f: 1 + k * 2 + Math.floor(rand() * 2), p: rand() * 6.283, a: (rand() - 0.5) * r0 * (0.26 / (k + 1)) });
   const tension = (th) => {
     let d = Math.abs(Math.atan2(Math.sin(th - tensionAngle), Math.cos(th - tensionAngle)));
     return Math.max(0, 1 - d / 1.9);
@@ -140,7 +140,7 @@ export function breakWillow(model, x0, ts, seed) {
   const cutAt = (th) => {
     let x = x0;
     for (const h of H) x += h.a * Math.sin(h.f * th + h.p);
-    return x + tension(th) * r0 * 0.25 * Math.sin(th * 9 + H[0].p);
+    return x + tension(th) * r0 * 0.1 * Math.sin(th * 7 + H[0].p);
   };
 
   const pos = geo.attributes.position;
@@ -190,25 +190,25 @@ function fractureFace(sec, cutAt, radAt, tension, r0, dir, rand) {
   const N = 40, RINGS = 4;
   const verts = [];
   const cols = [];
-  const pale = new THREE.Color(0xe2cda4), dark = new THREE.Color(0xb08c5c), c = new THREE.Color();
+  const pale = new THREE.Color(0xb89c74), dark = new THREE.Color(0x7d6042), c = new THREE.Color();
   const grid = [];
   for (let k = 0; k <= RINGS; k++) {
     const row = [];
     const f = 1 - k / RINGS; // 1 at the bark, 0 at the centre
     for (let i = 0; i < N; i++) {
       const th = (i / N) * Math.PI * 2 - Math.PI;
-      const R = radAt(th) * (k === 0 ? 1 : f * (0.92 + rand() * 0.12));
+      const R = radAt(th) * (k === 0 ? 1 : f * (0.96 + rand() * 0.06));
       // fibres: longer, sharper splinters where the wood was in tension
       const ten = tension(th);
       let dx = 0;
       if (k > 0) {
-        const len = r0 * (0.12 + ten * 0.9) * Math.pow(rand(), 1.6);
-        dx = (rand() < 0.5 + 0.15 * dir ? dir : -dir) * len * (k === RINGS ? 0.4 : 1);
+        const len = r0 * (0.05 + ten * 0.38) * Math.pow(rand(), 1.4);
+        dx = (rand() < 0.5 + 0.2 * dir ? dir : -dir) * len * (k === RINGS ? 0.4 : 1);
       }
       const x = cutAt(th) + dx;
       row.push(verts.length / 3);
       verts.push(x, sec.cy + Math.sin(th) * R, sec.cz + Math.cos(th) * R);
-      c.copy(pale).lerp(dark, rand() * 0.6 + (k === 0 ? 0.3 : 0));
+      c.copy(pale).lerp(dark, rand() * 0.45 + (k === 0 ? 0.35 : 0));
       cols.push(c.r, c.g, c.b);
     }
     grid.push(row);
@@ -249,16 +249,16 @@ export class Stage {
     this.scene = scene;
     const pmrem = new THREE.PMREMGenerator(r);
     scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    scene.environmentIntensity = 0.18;
+    scene.environmentIntensity = 0.1;
 
     this.camera = new THREE.PerspectiveCamera(FOV, 1, 1, 10000);
 
-    scene.add(new THREE.HemisphereLight(0x8a7560, 0x080605, 0.55));
-    const key = new THREE.DirectionalLight(0xffe0bc, 3.6);
+    scene.add(new THREE.HemisphereLight(0x7a6858, 0x060504, 0.42));
+    const key = new THREE.DirectionalLight(0xffdcb4, 2.5);
     this.key = key;
     scene.add(key);
     scene.add(key.target);
-    const rim = new THREE.DirectionalLight(0xd9d2c6, 1.5);
+    const rim = new THREE.DirectionalLight(0xcfc6b8, 1.0);
     this.rim = rim;
     scene.add(rim);
     scene.add(rim.target);
@@ -266,15 +266,25 @@ export class Stage {
     // materials
     const bark = model.willow.material;
     bark.side = THREE.DoubleSide;
-    // the baked bark texture is very dark; lift it to read under the stage light
-    bark.color.setRGB(3.4, 3.0, 2.65);
-    bark.envMapIntensity = 0.6;
-    if (bark.normalScale) bark.normalScale.set(1.2, 1.2);
+    // the baked bark texture is very dark; lift it just enough to read under the
+    // stage light, and make it matte: the baked roughness map is far too glossy
+    bark.color.setRGB(1.5, 1.32, 1.18);
+    bark.roughnessMap = null;
+    bark.roughness = 0.9;
+    bark.metalness = 0;
+    bark.envMapIntensity = 0.3;
+    if (bark.normalScale) bark.normalScale.set(1.0, 1.0);
+    bark.needsUpdate = true;
     this.bark = bark;
-    this.woodMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0, flatShading: true, side: THREE.DoubleSide });
+    this.woodMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96, metalness: 0, flatShading: true, side: THREE.DoubleSide });
     const boxMat = model.box.material;
     boxMat.side = THREE.DoubleSide;
-    boxMat.envMapIntensity = 1.0;
+    // printed card, not glossy plastic
+    boxMat.roughnessMap = null;
+    boxMat.roughness = 0.86;
+    boxMat.envMapIntensity = 0.45;
+    boxMat.color.setRGB(0.92, 0.9, 0.86);
+    boxMat.needsUpdate = true;
     this.boxMat = boxMat;
 
     // the intact willow

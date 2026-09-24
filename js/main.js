@@ -189,9 +189,9 @@ function paintBackground() {
 
   const Rg = Math.max(W, H) * 0.8;
   const g = b.createRadialGradient(C.x, C.y - H * 0.04, 0, C.x, C.y, Rg);
-  g.addColorStop(0, 'rgb(17,14,11)');
-  g.addColorStop(0.24, 'rgb(10,8,7)');
-  g.addColorStop(0.6, 'rgb(5,4,4)');
+  g.addColorStop(0, 'rgb(24,20,16)');
+  g.addColorStop(0.24, 'rgb(14,12,10)');
+  g.addColorStop(0.6, 'rgb(6,5,5)');
   g.addColorStop(1, 'rgb(2,2,2)');
   b.fillStyle = g;
   b.fillRect(0, 0, W, H);
@@ -210,9 +210,9 @@ function paintBackground() {
     b.closePath();
     const cg = b.createLinearGradient(0, 0, 0, H);
     cg.addColorStop(0, 'rgba(255,226,180,0)');
-    cg.addColorStop(f * 0.5, 'rgba(255,226,180,0.0035)');
-    cg.addColorStop(f, 'rgba(255,226,180,0.007)');
-    cg.addColorStop(Math.min(1, f + 0.1), 'rgba(255,226,180,0.002)');
+    cg.addColorStop(f * 0.5, 'rgba(255,226,180,0.006)');
+    cg.addColorStop(f, 'rgba(255,226,180,0.012)');
+    cg.addColorStop(Math.min(1, f + 0.1), 'rgba(255,226,180,0.004)');
     cg.addColorStop(1, 'rgba(255,226,180,0)');
     b.fillStyle = cg;
     b.fill();
@@ -224,8 +224,8 @@ function paintBackground() {
   b.scale(1, 0.12);
   const poolR = botW * 1.25;
   const pool = b.createRadialGradient(0, 0, 0, 0, 0, poolR);
-  pool.addColorStop(0, 'rgba(60,48,35,0.34)');
-  pool.addColorStop(0.5, 'rgba(40,32,24,0.16)');
+  pool.addColorStop(0, 'rgba(66,54,40,0.42)');
+  pool.addColorStop(0.5, 'rgba(44,36,27,0.2)');
   pool.addColorStop(1, 'rgba(30,24,18,0)');
   b.fillStyle = pool;
   b.beginPath();
@@ -235,7 +235,7 @@ function paintBackground() {
 
   const v = b.createRadialGradient(W / 2, H * 0.46, Math.min(W, H) * 0.22, W / 2, H * 0.5, Math.max(W, H) * 0.75);
   v.addColorStop(0, 'rgba(0,0,0,0)');
-  v.addColorStop(1, 'rgba(0,0,0,0.8)');
+  v.addColorStop(1, 'rgba(0,0,0,0.72)');
   b.fillStyle = v;
   b.fillRect(0, 0, W, H);
 }
@@ -522,7 +522,8 @@ function stickLen() {
 // ------------------------------------------------------------------ the box
 
 function boxState() {
-  const base = { x: box.x, y: box.y, yaw: -0.42 + Math.sin(time * 0.45) * 0.09, pitch: 1.02 + Math.sin(time * 0.7) * 0.025, lift: Math.sin(time * 0.9) * 3, scale: 1, opacity: 1 };
+  // resting on its wide face, the printed front sloping up towards the viewer
+  const base = { x: box.x, y: box.y, yaw: -0.36 + Math.sin(time * 0.45) * 0.07, pitch: 0.12 + Math.sin(time * 0.7) * 0.02, lift: Math.sin(time * 0.9) * 3, scale: 1, opacity: 1 };
   // an occasional hop, like a novelty toy asking to be picked up
   if (box.nudge > 0) {
     const u = 1 - box.nudge;
