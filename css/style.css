@@ -86,7 +86,6 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 30px;
   padding: 0 16px;
   margin: 0;
   border: 0;
@@ -96,30 +95,51 @@ body {
   cursor: pointer;
   outline: none;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
   transition: opacity 1s ease;
 }
 .gate.leaving { opacity: 0; pointer-events: none; }
 .gate[hidden] { display: none; }
+/* 3D: the button sits invisibly over the box itself */
+.gate.boxmode {
+  inset: auto;
+  padding: 0;
+  border-radius: 18px;
+}
+.gate.boxmode .gate-go { display: none; }
+.gate.boxmode:focus-visible { outline: 1px solid rgba(239, 230, 214, 0.25); outline-offset: 6px; }
 
-.gate-line {
+.gate-title {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 22%;
+  margin: 0;
+  padding: 0 16px;
+  text-align: center;
   font-style: italic;
   font-weight: 300;
-  font-size: clamp(26px, 4.4vw, 38px);
+  font-size: clamp(24px, 4vw, 34px);
   letter-spacing: 0.01em;
+  color: var(--ink);
+  pointer-events: none;
+  z-index: 34;
   opacity: 0;
   filter: blur(4px);
   transition: opacity 2.4s ease, filter 2.6s ease;
 }
-.gate-line b {
+.gate-title b {
   font-style: normal;
   font-weight: 500;
   font-size: 0.72em;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
-.gate.on .gate-line { opacity: 0.92; filter: none; }
+.gate-title.on { opacity: 0.9; filter: none; }
+.gate-title[hidden] { display: none; }
 
 .gate-go {
+  margin-top: 90px;
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.34em;
@@ -131,6 +151,28 @@ body {
 }
 .gate.go .gate-go { opacity: 1; animation: breathe 4.2s ease-in-out 1.6s infinite; }
 .gate:focus-visible .gate-go { color: var(--ink-soft); }
+
+.credit {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  margin: 0;
+  padding: 0 16px;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.5;
+  letter-spacing: 0.03em;
+  color: rgba(239, 230, 214, 0.26);
+  z-index: 36;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1.8s ease;
+}
+.credit.on { opacity: 1; pointer-events: auto; }
+.credit a { color: inherit; text-decoration: none; border-bottom: 1px solid rgba(239, 230, 214, 0.14); }
+.credit a:hover { color: rgba(239, 230, 214, 0.55); }
+.credit[hidden] { display: none; }
 
 @keyframes breathe {
   0%, 100% { opacity: 1; }

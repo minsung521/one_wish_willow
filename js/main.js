@@ -2,6 +2,7 @@
 
 import { mulberry32, makeNoise1D, clamp, lerp, smoothstep, easeInOut } from './util.js';
 import { createWillow, renderWillow, makeFracture, makePieces, drawCrack } from './willow.js';
+import { loadModel, Stage } from './stage.js';
 import { RigidPiece, Chips } from './pieces.js';
 import { Sound } from './audio.js';
 import { buzz } from './haptics.js';
@@ -15,6 +16,8 @@ const fxCanvas = $('fx');
 const ui = {
   gate: $('gate'),
   gateGo: $('gate-go'),
+  gateTitle: $('gate-title'),
+  credit: $('credit'),
   hint: $('hint'),
   endMain: $('ending-main'),
   endSub: $('ending-sub'),
@@ -23,6 +26,8 @@ const ui = {
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const coarse = window.matchMedia('(pointer: coarse)').matches;
 const THETA = -0.03;
+const OPEN_T = 1.9; // seconds from tapping the box to holding the willow
+const BOX_TO_WILLOW = 1.428 / 1.835; // willow length / box length in the model
 
 // ------------------------------------------------------------------ state
 
@@ -34,6 +39,8 @@ if (!record) {
 }
 
 const willow = createWillow(seed);
+// where the willow breaks, in model units along its length (0 = centre)
+const X0 = (mulberry32(seed + 3)() - 0.5) * 0.06;
 const tremorNoise = makeNoise1D(mulberry32(seed + 7));
 const sound = new Sound();
 
@@ -41,11 +48,14 @@ let W = 0, H = 0, dpr = 1;
 let L = 0, C = { x: 0, y: 0 }, floorY = 0, Dbreak = 150;
 const ndx = -Math.sin(THETA), ndy = Math.cos(THETA);
 
-let R = null; // the painted stick
+let R = null; // the painted stick (fallback when WebGL is unavailable)
+let stage = null; // the 3D model (box + willow)
+let use3D = false;
+let geom = null; // stick silhouette in stick-local px: { R0, yc, r, rTop, rBot }
 let frac = null; // where it will break, once we know which way it is pulled
 let partsCache = null;
 
-let phase = 'gate'; // gate | intro | idle | broken | wish | releasing | done | already
+let phase = 'gate'; // gate | opening | intro | idle | broken | wish | releasing | done | already
 let time = 0;
 let light = 0;
 let lightTarget = 0;
@@ -62,6 +72,8 @@ let motes = [];
 let pose = { x: 0, y: 0, ang: THETA };
 let hintTimer = 0;
 let grabbedOnce = false;
+// the box on the first screen
+const box = { x: 0, y: 0, len: 0, t0: 0, open: -1, hover: 0, pop: 0, nudge: 0, lastNudge: 0 };
 
 const st = {
   grab: false, key: false, keyD: 0, pointerId: null,
@@ -94,7 +106,12 @@ function layout() {
     cv.style.height = H + 'px';
   }
   const narrow = W < 640;
-  const newL = Math.round(narrow ? Math.min(W * 0.74, 360) : clamp(Math.min(W * 0.5, H * 0.85), 380, 640));
+  const newL = use3D
+    ? Math.round(narrow ? Math.min(W * 0.74, 340) : clamp(Math.min(W * 0.44, H * 0.78), 360, 580))
+    : Math.round(narrow ? Math.min(W * 0.74, 360) : clamp(Math.min(W * 0.5, H * 0.85), 380, 640));
+  box.len = Math.round(narrow ? Math.min(W * 0.8, 420) : clamp(Math.min(W * 0.5, H * 0.95), 420, 640));
+  box.x = W / 2;
+  box.y = H * 0.47;
   C = { x: W / 2, y: H * 0.46 };
   floorY = C.y + clamp(Math.max(newL * 0.34, H * 0.16), 100, 230);
   Dbreak = clamp(Math.min(W, H) * 0.24, 110, 200);
@@ -102,9 +119,20 @@ function layout() {
   paintBackground();
   seedMotes();
 
+  if (use3D) {
+    stage.resize(W, H, dpr);
+    const changed = Math.abs(newL - L) > 1;
+    L = newL;
+    geom = geom3D(L);
+    placeGate();
+    if (changed && pieces.length && pieces.every((p) => p.asleep) && record.pieces) restorePieces();
+    return;
+  }
+
   if (!R) {
     L = newL;
     R = renderWillow(willow, L, renderScale());
+    geom = R.geom;
   } else if (Math.abs(newL - L) > 1) {
     // repaint once the resizing settles
     clearTimeout(renderTimer);
@@ -113,6 +141,7 @@ function layout() {
       if (busy) return;
       L = newL;
       R = renderWillow(willow, L, renderScale());
+      geom = R.geom;
       frac = null;
       partsCache = null;
       if (pieces.length) restorePieces();
@@ -120,6 +149,34 @@ function layout() {
   } else if (pieces.length && pieces.every((p) => p.asleep) && record.pieces) {
     restorePieces();
   }
+}
+
+/** The 3D willow's silhouette, measured from the model, in stick-local px. */
+function geom3D(len) {
+  const prof = stage.model.willow.profile;
+  const at = (x) => prof.at(x / len);
+  return {
+    R0: len * Math.max(...prof.ry) * 0.85,
+    yc: (x) => -at(x).cy * len,
+    r: (x) => at(x).ry * len,
+    rTop: (x) => at(x).ry * len,
+    rBot: (x) => at(x).ry * len,
+  };
+}
+
+/** Put the (invisible) box button and the title where the 3D box is. */
+function placeGate() {
+  if (!use3D || phase !== 'gate') return;
+  drawBox(0);
+  const r = stage.boxRect();
+  const pad = 14;
+  Object.assign(ui.gate.style, {
+    left: Math.round(r.x0 - pad) + 'px',
+    top: Math.round(r.y0 - pad) + 'px',
+    width: Math.round(r.x1 - r.x0 + pad * 2) + 'px',
+    height: Math.round(r.y1 - r.y0 + pad * 2) + 'px',
+  });
+  ui.gateTitle.style.top = Math.max(24, Math.round(r.y0 - (W < 640 ? 78 : 96))) + 'px';
 }
 
 function paintBackground() {
@@ -227,12 +284,12 @@ function toLocal(x, y) {
 }
 
 function hitTest(x, y, touch) {
-  if (!R) return null;
+  if (!geom) return null;
   const p = toLocal(x, y);
   const pad = touch ? 28 : 14;
   if (Math.abs(p.x) > L / 2 + pad) return null;
   const xx = clamp(p.x, -L / 2, L / 2);
-  const g = R.geom;
+  const g = geom;
   const r = Math.max(g.rTop(xx), g.rBot(xx));
   if (Math.abs(p.y - g.yc(xx)) > r + pad) return null;
   return xx;
@@ -329,6 +386,13 @@ function hideHint() {
 
 function prepareFracture(sign) {
   if (frac && frac.ts === sign) return;
+  if (use3D) {
+    // cut the model now, while nothing is moving; the halves stay hidden until the snap
+    stage.breakAt(X0, sign, seed + (sign > 0 ? 1 : 2));
+    stage.showHalves([null, null], L);
+    frac = { ts: sign, x0: X0 * L, r0: geom.r(X0 * L) };
+    return;
+  }
   frac = makeFracture(willow, R, sign);
   partsCache = null;
   const want = frac;
@@ -413,7 +477,7 @@ function crackEvent(tau) {
   st.crack = Math.min(0.95, st.crack + 0.06);
   if (frac) {
     // a few crumbs of bark drop from the crack
-    const p = localToWorld(frac.x0, R.geom.yc(frac.x0) + st.sign * R.geom.r(frac.x0) * 0.95);
+    const p = localToWorld(frac.x0, geom.yc(frac.x0) + st.sign * geom.r(frac.x0) * 0.95);
     chips.burst(p.x, p.y, ndx * st.sign, ndy * st.sign, 0.35 * (L / 560), Math.random, floorY, 2 + Math.floor(tau * 3));
   }
 }
@@ -441,6 +505,59 @@ function computePose() {
     y: C.y + floatY + ndy * off,
     ang: THETA + st.tilt + tra + Math.sin(time * 0.37) * 0.006 * idle,
   };
+  if (phase === 'opening') {
+    const k = easeInOut(clamp((time - box.open - 0.3) / (OPEN_T - 0.3), 0, 1));
+    const bs = boxState();
+    pose = { x: lerp(bs.x, pose.x, k), y: lerp(bs.y - bs.lift, pose.y, k), ang: lerp(0, pose.ang, k) };
+  }
+}
+
+/** Length of the willow on screen right now (it grows out of the box). */
+function stickLen() {
+  if (phase !== 'opening') return L;
+  const k = easeInOut(clamp((time - box.open - 0.3) / (OPEN_T - 0.3), 0, 1));
+  return lerp(box.len * BOX_TO_WILLOW * 0.96, L, k);
+}
+
+// ------------------------------------------------------------------ the box
+
+function boxState() {
+  const base = { x: box.x, y: box.y, yaw: -0.42 + Math.sin(time * 0.45) * 0.09, pitch: 1.02 + Math.sin(time * 0.7) * 0.025, lift: Math.sin(time * 0.9) * 3, scale: 1, opacity: 1 };
+  // an occasional hop, like a novelty toy asking to be picked up
+  if (box.nudge > 0) {
+    const u = 1 - box.nudge;
+    const e = Math.sin(Math.PI * u);
+    base.lift += e * 9;
+    base.yaw += Math.sin(u * Math.PI * 4) * 0.05 * e;
+  }
+  base.scale = 1 + 0.03 * box.hover + 0.06 * box.pop;
+  if (phase === 'opening') {
+    const t = time - box.open;
+    base.opacity = 1 - smoothstep(0.25, 0.95, t);
+    base.lift -= smoothstep(0.15, 1.1, t) * 16;
+    base.scale *= 1 + smoothstep(0.1, 1, t) * 0.05;
+  }
+  return base;
+}
+
+function drawBox() {
+  if (!use3D) return;
+  if (phase !== 'gate' && phase !== 'opening') {
+    stage.showBox(false);
+    return;
+  }
+  const b = boxState();
+  stage.showBox(true, b.x, b.y, box.len * b.scale, b.yaw, b.pitch, b.lift, b.opacity);
+}
+
+function updateBox(dt) {
+  box.hover = lerp(box.hover, box.hoverTarget ? 1 : 0, 1 - Math.exp(-dt * 8));
+  box.pop *= Math.exp(-dt * 7);
+  if (box.nudge > 0) box.nudge = Math.max(0, box.nudge - dt / 0.5);
+  if (time - box.t0 > 3.5 && time - box.lastNudge > 4.5 && !box.hoverTarget) {
+    box.lastNudge = time;
+    box.nudge = 1;
+  }
 }
 
 // ------------------------------------------------------------------ the snap
@@ -460,8 +577,8 @@ function snap() {
   canvas.classList.remove('grabbing', 'can-grab');
   hideHint();
 
-  if (!frac || frac.ts !== sign) frac = makeFracture(willow, R, sign);
-  const parts = partsCache && partsCache.frac === frac ? partsCache.parts : makePieces(willow, R, frac);
+  if (!frac || frac.ts !== sign) prepareFracture(sign);
+  const parts = use3D ? parts3D() : partsCache && partsCache.frac === frac ? partsCache.parts : makePieces(willow, R, frac);
   const at = { ...pose };
   pieces = [new RigidPiece(parts.left, at, floorY - 6), new RigidPiece(parts.right, at, floorY + 12)];
   piecesSaved = false;
@@ -477,8 +594,13 @@ function snap() {
   const spread = clamp(room * 0.9, 24, 140);
   left.vel = { x: px * 150 * s - spread * (0.75 + Math.random() * 0.4), y: py * 150 * s - 60 * s };
   right.vel = { x: px * 160 * s + spread * (0.8 + Math.random() * 0.4), y: py * 160 * s - 50 * s };
+  // a little roll about their own axis as they tumble (3D only)
+  left.spin = 0;
+  right.spin = 0;
+  left.spinV = (Math.random() - 0.5) * 7;
+  right.spinV = (Math.random() - 0.5) * 7;
 
-  const b = localToWorld(frac.x0, R.geom.yc(frac.x0) + sign * R.geom.r(frac.x0) * 0.3, at);
+  const b = localToWorld(frac.x0, geom.yc(frac.x0) + sign * geom.r(frac.x0) * 0.3, at);
   flashX = b.x;
   flashY = b.y;
   chips.burst(flashX, flashY, px, py, s, Math.random, floorY, 34);
@@ -504,16 +626,37 @@ function snap() {
   saveRecord(record);
 }
 
+/** Collision outlines for the two 3D halves, in stick-local px. */
+function parts3D() {
+  const mk = (a, b) => {
+    const samples = [];
+    for (let s = 0; s <= 14; s++) {
+      const x = a + ((b - a) * s) / 14;
+      samples.push({ x, y: geom.yc(x), r: geom.r(x) });
+    }
+    return { samples };
+  };
+  return { left: mk(-L / 2, frac.x0), right: mk(frac.x0, L / 2) };
+}
+
 function restorePieces() {
   const sign = record.sign === -1 ? -1 : 1;
-  frac = makeFracture(willow, R, sign);
-  const parts = makePieces(willow, R, frac);
+  let parts;
+  if (use3D) {
+    frac = null;
+    prepareFracture(sign);
+    parts = parts3D();
+  } else {
+    frac = makeFracture(willow, R, sign);
+    parts = makePieces(willow, R, frac);
+  }
   const at = { x: C.x, y: C.y, ang: THETA };
   pieces = [new RigidPiece(parts.left, at, floorY - 6), new RigidPiece(parts.right, at, floorY + 12)];
   const saved = record.v === 2 && Array.isArray(record.pieces) && record.pieces.length === 2 ? record.pieces : null;
   if (saved) {
     pieces.forEach((p, i) => {
       p.setOriginPose({ x: W / 2 + saved[i].x * L, y: floorY + saved[i].y * L, ang: saved[i].a });
+      p.spin = saved[i].s || 0;
       p.asleep = true;
       p.grounded = 1;
     });
@@ -537,12 +680,7 @@ function physEnv() {
     g: 2300 * (L / 560) + 800,
     left: 12,
     right: W - 12,
-    onClack: (p, s) => {
-      if (phase === 'broken') {
-        sound.clack(s);
-        if (s > 0.25) buzz(Math.round(6 + 14 * s), 60);
-      }
-    },
+    onClack: () => {},
   };
 }
 
@@ -550,7 +688,7 @@ function savePieces() {
   record.v = 2;
   record.pieces = pieces.map((p) => {
     const o = p.originPose();
-    return { x: +((o.x - W / 2) / L).toFixed(4), y: +((o.y - floorY) / L).toFixed(4), a: +o.ang.toFixed(4) };
+    return { x: +((o.x - W / 2) / L).toFixed(4), y: +((o.y - floorY) / L).toFixed(4), a: +o.ang.toFixed(4), s: +(p.spin || 0).toFixed(3) };
   });
   saveRecord(record);
   piecesSaved = true;
@@ -561,7 +699,12 @@ function updatePieces(dt) {
   const env = physEnv();
   const sub = 4;
   for (let k = 0; k < sub; k++) pieces.forEach((p) => p.step(dt / sub, env, time));
-  chips.step(dt, env.g, (s) => { if (phase === 'broken') sound.tick(s * 0.6); });
+  chips.step(dt, env.g, () => {});
+  for (const p of pieces) {
+    if (p.spinV == null) continue;
+    p.spin += p.spinV * dt;
+    p.spinV *= Math.exp(-dt * (p.grounded ? 7 : 0.6));
+  }
   if (!piecesSaved && pieces.every((p) => p.asleep) && record.state !== 'fresh') savePieces();
 }
 
@@ -585,9 +728,14 @@ function update(dtReal) {
   shake *= Math.exp(-dtReal * (shake > 0.2 ? 8 : 13));
   punch *= Math.exp(-dtReal * 6);
 
-  if (phase === 'gate' || phase === 'intro' || phase === 'idle') {
-    if (phase !== 'gate') updateIntact(dt);
-    if (phase === 'gate' || phase === 'intro' || phase === 'idle') computePose();
+  if (phase === 'gate' || phase === 'opening' || phase === 'intro' || phase === 'idle') {
+    if (phase === 'intro' || phase === 'idle') updateIntact(dt);
+    if (phase === 'gate' || phase === 'opening' || phase === 'intro' || phase === 'idle') computePose();
+  }
+  if (phase === 'gate') updateBox(dtReal);
+  if (phase === 'opening' && time - box.open > OPEN_T) {
+    phase = 'intro';
+    if (use3D) stage.showBox(false);
   }
   if (pieces.length) updatePieces(dt);
 
@@ -676,6 +824,63 @@ function drawPuffs() {
   }
 }
 
+function render3D() {
+  const opening = phase === 'opening';
+  const showStick = (opening && time - box.open > 0.3) || ((phase === 'intro' || phase === 'idle') && !pieces.length);
+  if (phase === 'gate' || opening) {
+    const b = boxState();
+    softShadow(b.x, floorY, box.len * 0.46, 0, floorY - b.y + b.lift, box.len * 0.05);
+  }
+  if (showStick) softShadow(pose.x, floorY, stickLen() / 2, pose.ang, floorY - pose.y, geom.R0);
+  for (const p of pieces) {
+    const a = p.worldPoint(0);
+    const b = p.worldPoint(p.lx.length - 1);
+    softShadow((a.x + b.x) / 2, p.floor, Math.abs(b.x - a.x) / 2 + geom.R0, Math.atan2(b.y - a.y, b.x - a.x), Math.max(0, p.floor - (a.y + b.y) / 2), geom.R0);
+  }
+  stage.showStick(pose, stickLen(), showStick);
+  if (pieces.length) stage.showHalves(pieces.map((p) => p.originPose()), L, pieces.map((p) => p.spin || 0));
+  drawBox();
+  stage.render();
+  ctx.drawImage(stage.canvas, 0, 0, W, H);
+  if (showStick && !opening && frac && st.crack > 0) drawCrack3D();
+}
+
+/** A hairline crack opening from the side under tension. */
+function drawCrack3D() {
+  const ts = frac.ts;
+  const p = st.crack;
+  const x = frac.x0;
+  const yc = geom.yc(x);
+  const r = geom.r(x) * 0.9;
+  const vEnd = ts * (1 - 1.4 * p);
+  const steps = 18;
+  const pts = [];
+  for (let s = 0; s <= steps; s++) {
+    const v = ts + ((vEnd - ts) * s) / steps;
+    pts.push([x + r * (0.1 * Math.sin(v * 11 + seed) + 0.05 * Math.sin(v * 29)), yc + v * r]);
+  }
+  ctx.save();
+  ctx.translate(pose.x, pose.y);
+  ctx.rotate(pose.ang);
+  ctx.lineCap = 'round';
+  for (let s = 0; s < steps; s++) {
+    const q = s / steps;
+    ctx.beginPath();
+    ctx.moveTo(pts[s][0], pts[s][1]);
+    ctx.lineTo(pts[s + 1][0], pts[s + 1][1]);
+    ctx.lineWidth = 0.5 + (1 - q) * (0.5 + 2 * p);
+    ctx.strokeStyle = `rgba(8,5,3,${(0.45 + 0.45 * (1 - q)).toFixed(3)})`;
+    ctx.stroke();
+  }
+  ctx.translate(0.8, -0.3 * ts);
+  ctx.beginPath();
+  for (let s = 0; s <= steps * 0.7; s++) (s ? ctx.lineTo(pts[s][0], pts[s][1]) : ctx.moveTo(pts[s][0], pts[s][1]));
+  ctx.lineWidth = 0.5;
+  ctx.strokeStyle = `rgba(236,214,168,${(0.3 * p).toFixed(3)})`;
+  ctx.stroke();
+  ctx.restore();
+}
+
 function render() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.drawImage(bgCv, 0, 0);
@@ -691,7 +896,9 @@ function render() {
 
   drawMotes();
 
-  if (!pieces.length && R) {
+  if (use3D) {
+    render3D();
+  } else if (!pieces.length && R) {
     softShadow(pose.x, floorY, L / 2, pose.ang, floorY - pose.y, R.geom.R0);
     ctx.save();
     ctx.translate(pose.x, pose.y);
@@ -705,7 +912,7 @@ function render() {
       const b = p.worldPoint(p.lx.length - 1);
       const cx = (a.x + b.x) / 2;
       const cy = (a.y + b.y) / 2;
-      softShadow(cx, p.floor, Math.abs(b.x - a.x) / 2 + R.geom.R0, Math.atan2(b.y - a.y, b.x - a.x), Math.max(0, p.floor - cy), R.geom.R0);
+      softShadow(cx, p.floor, Math.abs(b.x - a.x) / 2 + geom.R0, Math.atan2(b.y - a.y, b.x - a.x), Math.max(0, p.floor - cy), geom.R0);
     }
     for (const p of pieces) p.draw(ctx);
   }
@@ -782,6 +989,7 @@ const wish = new WishUI({
         ui.endSub.textContent = 'You only get one.';
         ui.endSub.classList.add('on');
       }, 3000);
+      if (use3D) showCredit(4200);
     });
   },
 });
@@ -791,10 +999,20 @@ const wish = new WishUI({
 function enter(e) {
   if (phase !== 'gate') return;
   sound.unlock();
+  sound.jingle();
   sound.startAmbience();
+  buzz(12);
   ui.gate.classList.add('leaving');
-  setTimeout(() => { ui.gate.hidden = true; }, 1100);
-  phase = 'intro';
+  setTimeout(() => { ui.gate.hidden = true; }, 900);
+  ui.gateTitle.classList.remove('on');
+  ui.credit.classList.remove('on');
+  if (use3D) {
+    phase = 'opening';
+    box.open = time;
+    box.pop = 1;
+  } else {
+    phase = 'intro';
+  }
   lightTarget = 1;
   lightRate = 0.3;
   canvas.tabIndex = 0;
@@ -802,11 +1020,25 @@ function enter(e) {
   if (e && e.detail === 0) setTimeout(() => canvas.focus({ preventScroll: true }), 50);
   hintTimer = setTimeout(() => {
     if (!grabbedOnce && (phase === 'intro' || phase === 'idle')) showHint();
-  }, 3800);
+  }, 3800 + (use3D ? OPEN_T * 1000 : 0));
 }
 
-function boot() {
+function showCredit(delay) {
+  setTimeout(() => ui.credit.classList.add('on'), delay);
+}
+
+async function boot() {
   makeGrain();
+  try {
+    const model = await loadModel('assets/willow/willow.gltf');
+    stage = new Stage(model);
+    use3D = true;
+  } catch (err) {
+    console.warn('3D model unavailable, falling back to the painted willow:', err);
+    use3D = false;
+    ui.credit.hidden = true;
+  }
+  ui.gate.classList.toggle('boxmode', use3D);
   layout();
   window.addEventListener('resize', layout);
   ui.gateGo.textContent = coarse ? 'Tap to begin' : 'Click to begin';
@@ -828,6 +1060,7 @@ function boot() {
       ui.endSub.textContent = 'You only get one wish.';
       ui.endSub.classList.add('on');
     }, 3800);
+    showCredit(4400);
   } else if (record.state === 'broken') {
     // broken, but the wish was never written
     phase = 'wish';
@@ -839,9 +1072,24 @@ function boot() {
     setTimeout(() => wish.show(), 1800);
   } else {
     phase = 'gate';
+    box.t0 = time;
     ui.gate.addEventListener('click', enter);
-    setTimeout(() => ui.gate.classList.add('on'), 400);
-    setTimeout(() => ui.gate.classList.add('go'), 2200);
+    ui.gate.addEventListener('pointerenter', () => { box.hoverTarget = true; });
+    ui.gate.addEventListener('pointerleave', () => { box.hoverTarget = false; });
+    if (use3D) {
+      // the box is the way in: it fades up in its light
+      lightTarget = 1;
+      lightRate = 0.25;
+      placeGate();
+      setTimeout(() => ui.gateTitle.classList.add('on'), 700);
+      setTimeout(() => ui.gate.classList.add('on'), 700);
+      showCredit(1600);
+    } else {
+      ui.gateTitle.style.top = Math.round(H * 0.5 - 60) + 'px';
+      setTimeout(() => ui.gateTitle.classList.add('on'), 400);
+      setTimeout(() => ui.gate.classList.add('on'), 400);
+      setTimeout(() => ui.gate.classList.add('go'), 2200);
+    }
   }
 
   let last = performance.now();
@@ -865,4 +1113,6 @@ window.__oww = {
   get L() { return L; },
   get pieces() { return pieces; },
   get audio() { return sound.ctx ? sound.ctx.state : 'none'; },
+  get use3D() { return use3D; },
+  get box() { return box; },
 };

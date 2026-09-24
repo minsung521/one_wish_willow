@@ -286,24 +286,102 @@ export class Sound {
   snap() {
     if (!this.live) return;
     const t = this.now + 0.001;
-    // the split: hard and bright, two fronts a few ms apart
-    this._burst({ t, type: 'highpass', freq: 1500, q: 0.7, peak: 1.0, attack: 0.0004, decay: 0.05, send: 0.85 });
-    this._burst({ t: t + 0.006, type: 'bandpass', freq: 3600, q: 1.1, peak: 0.62, attack: 0.0004, decay: 0.035, send: 0.5 });
-    this._burst({ t: t + 0.017, type: 'bandpass', freq: 5400, q: 1.4, peak: 0.26, attack: 0.0004, decay: 0.03, send: 0.35 });
-    // the stick rings for an instant
-    this._burst({ t, type: 'bandpass', freq: 980, q: 9, peak: 0.85, attack: 0.0008, decay: 0.09, send: 0.6 });
-    this._burst({ t, type: 'bandpass', freq: 2100, q: 7, peak: 0.5, attack: 0.0008, decay: 0.06, send: 0.45 });
-    this._burst({ t, type: 'bandpass', freq: 460, q: 6, peak: 0.45, attack: 0.001, decay: 0.12, send: 0.4 });
-    // weight behind it
-    this._tone({ t, freq: 135, freqEnd: 50, peak: 0.5, attack: 0.0015, decay: 0.17 });
-    // splinters letting go
-    for (let k = 0; k < 9; k++) {
-      const dt = 0.012 + Math.pow(Math.random(), 1.8) * 0.16;
-      this._burst({ t: t + dt, type: 'bandpass', freq: 2600 + Math.random() * 4400, q: 2, hp: 1500, peak: 0.03 + Math.random() * 0.09, attack: 0.0005, decay: 0.006 + Math.random() * 0.014, send: 0.3 });
+    // the split: hard, bright and short, two fronts a few ms apart
+    this._burst({ t, type: 'highpass', freq: 1600, q: 0.7, peak: 1.0, attack: 0.0004, decay: 0.038, send: 0.18 });
+    this._burst({ t: t + 0.005, type: 'bandpass', freq: 3800, q: 1.1, peak: 0.6, attack: 0.0004, decay: 0.026, send: 0.12 });
+    this._burst({ t: t + 0.013, type: 'bandpass', freq: 5600, q: 1.4, peak: 0.24, attack: 0.0004, decay: 0.02, send: 0.08 });
+    // dry wood rings for an instant, no longer
+    this._burst({ t, type: 'bandpass', freq: 1050, q: 8, peak: 0.8, attack: 0.0008, decay: 0.055, send: 0.12 });
+    this._burst({ t, type: 'bandpass', freq: 2300, q: 6, peak: 0.45, attack: 0.0008, decay: 0.035, send: 0.08 });
+    this._burst({ t, type: 'bandpass', freq: 520, q: 5, peak: 0.35, attack: 0.001, decay: 0.07, send: 0.08 });
+    this._tone({ t, freq: 140, freqEnd: 60, peak: 0.38, attack: 0.0015, decay: 0.09 });
+    // a few fibres letting go right behind it
+    for (let k = 0; k < 6; k++) {
+      const dt = 0.008 + Math.pow(Math.random(), 1.8) * 0.07;
+      this._burst({ t: t + dt, type: 'bandpass', freq: 2800 + Math.random() * 4200, q: 2, hp: 1500, peak: 0.03 + Math.random() * 0.07, attack: 0.0004, decay: 0.005 + Math.random() * 0.01 });
     }
     if (this.stressNodes) {
       this.stressNodes.hg.gain.setTargetAtTime(0, t, 0.01);
       this.stressNodes.lg.gain.setTargetAtTime(0, t, 0.01);
+    }
+  }
+
+  /**
+   * Opening the box: the film's novelty "jingle and a fun pop surprise".
+   * A party-popper pop, then a bright little toy fanfare played through a
+   * cheap, warbling speaker, slightly out of tune.
+   */
+  jingle() {
+    // Called inside the tap that unlocks audio: the context may still be
+    // finishing its resume, which takes milliseconds, so this one sound is
+    // scheduled either way.
+    if (!this.ctx || this.ctx.state === 'closed') return;
+    const ctx = this.ctx;
+    const t = this.now + 0.01;
+    // pop
+    this._burst({ t, type: 'bandpass', freq: 1800, q: 0.8, peak: 0.55, attack: 0.0006, decay: 0.05, send: 0.2 });
+    this._tone({ t, freq: 320, freqEnd: 90, peak: 0.25, attack: 0.001, decay: 0.07 });
+
+    // the cheap speaker: distortion, band-limited, with a wow in the pitch
+    const shaper = ctx.createWaveShaper();
+    const curve = new Float32Array(1024);
+    for (let i = 0; i < 1024; i++) {
+      const x = (i / 1023) * 2 - 1;
+      curve[i] = Math.tanh(x * 3.2) * 0.9;
+    }
+    shaper.curve = curve;
+    const hp = this._filter('highpass', 380, 0.7);
+    const lp = this._filter('lowpass', 3400, 0.9);
+    const out = ctx.createGain();
+    out.gain.value = 0.2;
+    shaper.connect(hp);
+    hp.connect(lp);
+    lp.connect(out);
+    out.connect(this.master);
+    const send = ctx.createGain();
+    send.gain.value = 0.35;
+    out.connect(send);
+    send.connect(this.reverb);
+    const wow = ctx.createOscillator();
+    wow.frequency.value = 5.2;
+    const wowG = ctx.createGain();
+    wowG.gain.value = 14; // cents
+    wow.connect(wowG);
+    wow.start(t);
+    wow.stop(t + 2.2);
+
+    // C E G C' ... then a held major chord, all a touch flat
+    const notes = [
+      [0.06, 523.25, 0.1],
+      [0.16, 659.25, 0.1],
+      [0.26, 783.99, 0.1],
+      [0.36, 1046.5, 0.16],
+      [0.56, 783.99, 0.08],
+      [0.66, 1046.5, 0.6],
+    ];
+    const chord = [[0.66, 659.25, 0.6], [0.66, 523.25, 0.6]];
+    for (const [dt, f, len] of [...notes, ...chord]) {
+      for (const [type, lvl, det] of [['square', 0.5, -9], ['triangle', 0.7, 6]]) {
+        const o = ctx.createOscillator();
+        o.type = type;
+        o.frequency.value = f * 0.994;
+        o.detune.value = det;
+        wowG.connect(o.detune);
+        const g = ctx.createGain();
+        const st = t + dt;
+        g.gain.setValueAtTime(0.0001, st);
+        g.gain.linearRampToValueAtTime(lvl * 0.5, st + 0.006);
+        g.gain.exponentialRampToValueAtTime(lvl * 0.2, st + len * 0.5);
+        g.gain.exponentialRampToValueAtTime(0.0001, st + len + 0.35);
+        o.connect(g);
+        g.connect(shaper);
+        o.start(st);
+        o.stop(st + len + 0.4);
+      }
+    }
+    // a sprinkle of glitter on top
+    for (let k = 0; k < 7; k++) {
+      this._tone({ t: t + 0.7 + k * 0.07 + Math.random() * 0.03, freq: 2400 + Math.random() * 1800, peak: 0.018, attack: 0.002, decay: 0.12, send: 0.5 });
     }
   }
 

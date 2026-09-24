@@ -19,12 +19,13 @@
   <canvas id="scene"
           tabindex="-1"
           role="img"
-          aria-label="The One Wish Willow, a short wooden stick. Press on it and pull to snap it in half. With a keyboard, hold Space."></canvas>
+          aria-label="The One Wish Willow, a gnarled wooden stick. Press on it and pull to snap it in half. With a keyboard, hold Space."></canvas>
 
   <div class="grain" aria-hidden="true"></div>
 
-  <button class="gate" id="gate" type="button" aria-label="Begin">
-    <span class="gate-line">You only get <b>one wish.</b></span>
+  <p class="gate-title" id="gate-title">You only get <b>one wish.</b></p>
+
+  <button class="gate" id="gate" type="button" aria-label="Open the One Wish Willow box">
     <span class="gate-go" id="gate-go">Tap to begin</span>
   </button>
 
@@ -61,8 +62,19 @@
 
   <canvas id="fx" aria-hidden="true"></canvas>
 
+  <p class="credit" id="credit">
+    3D model: <a href="https://sketchfab.com/3d-models/one-wish-willow-from-obsession-movie-7269f920284c4bb7a169ee110034d164" target="_blank" rel="noopener">“One Wish Willow from Obsession movie”</a>
+    by <a href="https://sketchfab.com/alyxyuu" target="_blank" rel="noopener">AlyStation</a>
+    on Sketchfab · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>
+  </p>
+
   <noscript><p class="noscript">The One Wish Willow needs JavaScript to be broken.</p></noscript>
 
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three/three.module.min.js", "three/addons/": "./vendor/three/addons/" } }
+  </script>
+  <link rel="modulepreload" href="vendor/three/three.module.min.js">
+  <link rel="preload" href="assets/willow/willow.gltf" as="fetch" crossorigin>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
