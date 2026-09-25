@@ -99,7 +99,7 @@ When the 1.5 s hold completes, `js/keep.js` sends one `POST /api/wish` (`keepali
 | | |
 |---|---|
 | Request | `wish_text`, `client_id`, `locale`, `tz_offset` (minutes ahead of UTC, Seoul = 540), `device_type`, `referrer`, `utm_source`, `snap_to_submit_ms`, `app_version` |
-| Filled in by the server | `country` (`x-vercel-ip-country`), `ip_hash`, `char_length` (code points), `created_at` |
+| Filled in by the server | `country` (`x-vercel-ip-country`), `ip_hash`, `char_length` (code points), `created_at`, and `app_version`: the first 7 characters of `VERCEL_GIT_COMMIT_SHA`, the commit Vercel deployed. The page's `app_version` is used only when that variable is missing (local runs). |
 | Validation | `wish_text` is trimmed and must be 1–140 characters, the input's own limit, counted the same way. `client_id` must be a UUID. Any other field of the wrong type or out of range is stored as null. |
 | Limits | One wish per `client_id`, ever (an advisory lock keeps this true for simultaneous requests), and 20 an hour per `ip_hash`, generous for schools, offices and shared Wi-Fi |
 | Answers | `201` stored, `429 {"status":"rate_limited"}`, `400` malformed, `500` server error |
@@ -132,7 +132,7 @@ PostHog (US Cloud) is loaded by its official snippet in `<head>` and started by 
 
 Reserved for Wish Score, not sent yet: `score_cta_viewed`, `score_cta_clicked`, `score_requested`, `score_result_shown`, `score_failed`, `score_rate_limited`, `score_feedback`, `score_retry_intent`.
 
-`APP_VERSION` in `js/config.js` is set by hand when releasing, to the short hash of the commit that changed the app. A site with no build step can't read its own commit.
+`APP_VERSION` in `js/config.js` is the `app_version` on events. It is set by hand when releasing, to the short hash of the commit that changed the app, because a site with no build step can't read its own commit. Stored wishes don't rely on it: the function knows the deployed commit. The two can differ (a merge commit, a docs-only commit), so match rows and events by `client_id`, not by version.
 
 ### Where the wish may go
 Only into the body of the `/api/wish` request, and from there into the `wishes` table:

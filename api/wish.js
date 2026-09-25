@@ -39,6 +39,9 @@ export async function POST(request) {
       return reply(500, 'error');
     }
     w.ip_hash = ipHash(request.headers, IP_HASH_SECRET);
+    // the commit Vercel deployed; the page's own value only where that's unknown (local runs)
+    const sha = process.env.VERCEL_GIT_COMMIT_SHA;
+    if (typeof sha === 'string' && sha) w.app_version = sha.slice(0, 7);
 
     const sql = neon(DATABASE_URL);
     // The lock makes "one per client_id" hold even for two requests at once;

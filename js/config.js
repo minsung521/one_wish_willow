@@ -5,10 +5,11 @@
 export const POSTHOG_KEY = 'phc_qnAFakBY8siycbwEoQmDAiRNUH7bhHeYTmNwFPC8nrPb';
 export const POSTHOG_HOST = 'https://us.i.posthog.com';
 
-// Sent as `app_version` with every event and every stored wish. A site with no
-// build step can't read its own commit, so this is set by hand when releasing:
-// the short hash of the commit that changed the app.
-export const APP_VERSION = '589d196';
+// Sent as `app_version` with every event. A site with no build step can't read
+// its own commit, so this is set by hand when releasing: the short hash of the
+// commit that changed the app. (Stored wishes get the deployed commit from the
+// server; this value is only their fallback.)
+export const APP_VERSION = '5752f8c';
 
 // Where the wish is kept (api/wish.js).
 export const WISH_API = '/api/wish';
