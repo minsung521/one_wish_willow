@@ -34,6 +34,11 @@ const THETA = -0.03;
 const OPEN_T = 2.3; // seconds from tapping the box to holding the willow
 const BOX_GONE = 0.9; // the box has fully faded by then
 const BOX_TO_WILLOW = 1.428 / 1.835; // willow length / box length in the model
+const MAX_FRAME_DT = 0.05; // s: a longer frame (a tab coming back, a stall) counts as this much
+// The release spring is stiff (10 Hz): one explicit step per frame blows up
+// above ~23 ms (below ~43 fps). Longer frames take equal sub-steps of at most
+// this, so 50 fps and faster still take the single step they always did.
+const MAX_SPRING_STEP = 0.02;
 
 // ------------------------------------------------------------------ state
 
@@ -470,10 +475,14 @@ function updateIntact(dt) {
     // stiff wood springs straight back
     const k = Math.pow(2 * Math.PI * 10, 2);
     const c = 2 * 0.32 * Math.sqrt(k);
-    st.dispV += (-k * st.disp - c * st.dispV) * dt;
-    st.disp += st.dispV * dt;
-    st.tiltV += (-k * st.tilt - c * st.tiltV) * dt;
-    st.tilt += st.tiltV * dt;
+    const n = Math.ceil(dt / MAX_SPRING_STEP);
+    const h = dt / n;
+    for (let i = 0; i < n; i++) {
+      st.dispV += (-k * st.disp - c * st.dispV) * h;
+      st.disp += st.dispV * h;
+      st.tiltV += (-k * st.tilt - c * st.tiltV) * h;
+      st.tilt += st.tiltV * h;
+    }
     st.tension = Math.max(0, st.tension - dt * 5);
     st.strain = 0;
     st.speed = 0;
@@ -1138,7 +1147,7 @@ async function boot() {
 
   let last = performance.now();
   const frame = (now) => {
-    const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+    const dt = Math.min(MAX_FRAME_DT, Math.max(0, (now - last) / 1000));
     last = now;
     update(dt);
     render();
