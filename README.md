@@ -51,6 +51,8 @@ At the break, the same pixels are split along a jagged fracture. There are long 
 | `js/haptics.js` | Vibration API, with the iOS 18 switch-tick as a best-effort fallback |
 | `js/wish.js` | Wish prompt, press-and-hold confirm, and letters that burn away one by one |
 | `js/storage.js` | One-time rule: state lives in localStorage and is mirrored to a cookie |
+| `js/share.js` | The Share toast on the ending and revisit screens |
+| `js/analytics.js` | `track()`: a PostHog wrapper that does nothing until the SDK is on the page |
 
 ### Copy and type
 All on-screen text is taken from the One Wish Willow packaging as reproduced on the model's box texture (which matches the film prop) and from the official product site: "Remove from the box and just make a wish!", "Spark the middle and break in half", "What are you wishing for?", "State your wish clearly", "Single Use Only. Once made, it cannot be undone or repeated.", "Wait up to 24 hours for your wish to come true.", "Only one wish per life per person." The type pairs a chunky rounded display face (Lilita One) for headings, in the spirit of the box's arched title, with Nunito for the fine print, in the package's cream on a dark stage with its red as the one accent.
@@ -67,6 +69,17 @@ Every sound checks that the audio context is actually running. If it is not, the
 - Once a wish is made, every later visit shows the halves where they fell, with *YOUR WISH HAS ALREADY BEEN MADE.*
 - The wish text is never stored or sent anywhere.
 - For testing, clearing the site's data (`localStorage` plus the `one-wish-willow` cookie) resets it.
+
+### Share
+A small **Share** pill comes up at the bottom, above the credit line: on the ending screen 2 s after its last line appears, on the revisit screen 1 s after it opens. Both are timed in real elapsed time, not frames, so slow devices show it at the same moment. It leaves after about 8 s, but not while it is hovered, touched or keyboard-focused. After that, a tap anywhere brings it back.
+
+- **Phones and tablets** (`pointer: coarse`) open the system share sheet. Closing the sheet ends there, and the clipboard is left alone. If there is no sheet, or it fails for any other reason, the link is copied.
+- **Desktop** copies the link straight away. The same pill then reads *Link copied*.
+- If copying fails too, the link is shown as selected text to copy by hand.
+
+The shared link is always the canonical address plus `?ref=share` (`https://one-wish-willow-eta.vercel.app/?ref=share`). It is never built from the current URL, so the sharer's UTM parameters are not passed on, and it never contains the wish. The share title, text and clipboard content are placeholders at the top of `js/share.js` until the copy is final (MIN-127).
+
+Once there is a result, one `share_clicked` event is sent with `method` (`native` / `copy_link`, the method that was actually used), `result` (`success` / `cancel` / `error`, where showing the link as text counts as `error`) and `screen` (`ending` / `revisit`). Until the PostHog SDK is added (MIN-124), `track()` silently drops it.
 
 ### Controls
 - **Pointer or touch:** press on the stick and pull across it (up or down) to snap it.

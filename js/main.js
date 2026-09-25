@@ -8,6 +8,7 @@ import { Sound } from './audio.js';
 import { buzz } from './haptics.js';
 import { loadRecord, saveRecord } from './storage.js';
 import { WishUI } from './wish.js';
+import { ShareToast } from './share.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('scene');
@@ -972,6 +973,8 @@ function makeGrain() {
 
 // ------------------------------------------------------------------ wish
 
+const share = new ShareToast({ avoid: [ui.credit] });
+
 const wish = new WishUI({
   sound,
   onConfirm: () => {
@@ -995,6 +998,7 @@ const wish = new WishUI({
       setTimeout(() => {
         ui.endSub.textContent = 'After granting your wish, the One Wish Willow™ loses its magical properties.';
         ui.endSub.classList.add('on');
+        share.show('ending');
       }, 3000);
       if (use3D) showCredit(4200);
     });
@@ -1053,6 +1057,8 @@ async function boot() {
   if (record.state === 'wished') {
     phase = 'already';
     ui.gate.hidden = true;
+    // timed from the moment this screen opens
+    share.show('revisit');
     restorePieces();
     lightTarget = 0.3;
     lightRate = 0.16;
