@@ -14,6 +14,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <!-- PostHog's official loader snippet. It only defines the queueing stub, so
+       calls made before the SDK arrives are kept; posthog.init runs in
+       js/visit.js with the key and host from js/config.js. -->
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog&&window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey canRenderSurvey canRenderSurveyAsync identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing debug getPageViewId captureTraceFeedback captureTraceMetric".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+  </script>
 </head>
 <body>
   <canvas id="scene"
@@ -40,6 +46,7 @@
       <h1 class="wish-q" id="wish-q">What are you wishing for?</h1>
       <div class="wish-field" id="wish-field">
         <textarea id="wish-input"
+                  class="ph-no-capture ph-mask"
                   rows="1"
                   maxlength="140"
                   placeholder="I wish…"
@@ -64,7 +71,7 @@
     <p class="ending-sub" id="ending-sub"></p>
   </section>
 
-  <canvas id="fx" aria-hidden="true"></canvas>
+  <canvas id="fx" class="ph-no-capture ph-mask" aria-hidden="true"></canvas>
 
   <div class="share" id="share" aria-live="polite">
     <button class="share-btn" id="share-btn" type="button">Share</button>
@@ -73,9 +80,11 @@
 
   <p class="credit" id="credit">
     <span class="credit-mfr">Manufacturer: TABI Cat Curiosities · Use at your own risk.</span><br>
-    3D model: <a href="https://sketchfab.com/3d-models/one-wish-willow-from-obsession-movie-7269f920284c4bb7a169ee110034d164" target="_blank" rel="noopener">“One Wish Willow from Obsession movie”</a>
+    <span id="credit-model">3D model: <a href="https://sketchfab.com/3d-models/one-wish-willow-from-obsession-movie-7269f920284c4bb7a169ee110034d164" target="_blank" rel="noopener">“One Wish Willow from Obsession movie”</a>
     by <a href="https://sketchfab.com/alyxyuu" target="_blank" rel="noopener">AlyStation</a>
-    on Sketchfab · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>
+    on Sketchfab · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a><br></span>
+    Wishes are kept anonymously.<br>
+    Unofficial fan-made project. Not affiliated with Obsession or its studio.
   </p>
 
   <noscript><p class="noscript">The One Wish Willow needs JavaScript to be broken.</p></noscript>
@@ -85,6 +94,8 @@
   </script>
   <link rel="modulepreload" href="vendor/three/three.module.min.js">
   <link rel="preload" href="assets/willow/willow.gltf" as="fetch" crossorigin>
+  <!-- counts the visit and starts analytics without waiting for the 3D stage -->
+  <script type="module" src="js/visit.js"></script>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>

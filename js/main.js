@@ -9,6 +9,9 @@ import { buzz } from './haptics.js';
 import { loadRecord, saveRecord } from './storage.js';
 import { WishUI } from './wish.js';
 import { ShareToast } from './share.js';
+import { track, setProps } from './analytics.js';
+import { visit } from './visit.js';
+import { keepWish } from './keep.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('scene');
@@ -19,6 +22,7 @@ const ui = {
   gateGo: $('gate-go'),
   gateTitle: $('gate-title'),
   credit: $('credit'),
+  creditModel: $('credit-model'),
   hint: $('hint'),
   endMain: $('ending-main'),
   endSub: $('ending-sub'),
@@ -74,6 +78,10 @@ let motes = [];
 let pose = { x: 0, y: 0, ang: THETA };
 let hintTimer = 0;
 let grabbedOnce = false;
+// for analytics: performance.now() of the first frame and of the box tap
+let readyAt = 0;
+let tapAt = 0;
+let grabs = 0;
 // the box on the first screen
 const box = { x: 0, y: 0, len: 0, t0: 0, open: -1, hover: 0, pop: 0, nudge: 0, lastNudge: 0 };
 
@@ -352,6 +360,8 @@ function startGrab(gx, x, y, pointerId) {
   st.gx = gx;
   st.strain = 0;
   st.tension = 0;
+  grabs++;
+  if (!grabbedOnce) track('branch_grab_started');
   grabbedOnce = true;
   sound.tick(0.35);
   buzz(6);
@@ -627,6 +637,14 @@ function snap() {
 
   record = { v: 2, seed, state: 'broken', sign, at: Date.now() };
   saveRecord(record);
+
+  const snapped = {
+    grab_attempts: grabs,
+    ms_since_box_tap: tapAt ? Math.round(performance.now() - tapAt) : null,
+    days_since_first_visit: Math.floor((record.at - visit.firstVisitAt) / 86400000),
+  };
+  // sent just after this frame, so the snap frame itself stays light
+  setTimeout(() => track('branch_snapped', snapped), 0);
 }
 
 /** Collision outlines for the two 3D halves, in stick-local px. */
@@ -977,13 +995,19 @@ const share = new ShareToast({ avoid: [ui.credit] });
 
 const wish = new WishUI({
   sound,
-  onConfirm: () => {
+  onStart: () => track('wish_input_started'),
+  onConfirm: (text) => {
+    // the snap may have been on an earlier visit, so wall-clock time
+    const snapToSubmit = record.at ? Math.max(0, Date.now() - record.at) : null;
     phase = 'releasing';
     record.state = 'wished';
     record.wishedAt = Date.now();
     saveRecord(record);
     sound.wishRelease();
     buzz(28);
+    // only the length goes to analytics; the text goes to the wish API alone
+    track('wish_submitted', { char_length: Array.from(text).length, snap_to_submit_ms: snapToSubmit });
+    keepWish(text, snapToSubmit);
     lightTarget = 0.4;
     lightRate = 0.12;
     wish.release(fxCanvas, () => {
@@ -991,6 +1015,7 @@ const wish = new WishUI({
       setTimeout(() => {
         ui.endMain.textContent = 'Wait up to 24 hours for your wish to come true.';
         ui.endMain.classList.add('on');
+        track('ending_viewed');
         // the room sinks further as the waiting begins
         lightTarget = 0.2;
         lightRate = 0.1;
@@ -1000,7 +1025,7 @@ const wish = new WishUI({
         ui.endSub.classList.add('on');
         share.show('ending');
       }, 3000);
-      if (use3D) showCredit(4200);
+      showCredit(4200);
     });
   },
 });
@@ -1013,6 +1038,8 @@ function enter(e) {
   sound.jingle();
   sound.startAmbience();
   buzz(12);
+  tapAt = performance.now();
+  track('box_tapped', { ms_since_ready: readyAt ? Math.round(tapAt - readyAt) : null });
   ui.gate.classList.add('leaving');
   setTimeout(() => { ui.gate.hidden = true; }, 900);
   ui.gateTitle.classList.remove('on');
@@ -1047,8 +1074,11 @@ async function boot() {
   } catch (err) {
     console.warn('3D model unavailable, falling back to the painted willow:', err);
     use3D = false;
-    ui.credit.hidden = true;
+    // the model isn't shown, so neither is its credit; the notices stay
+    ui.creditModel.hidden = true;
   }
+  const renderer = use3D ? 'webgl' : 'fallback';
+  setProps({ renderer });
   ui.gate.classList.toggle('boxmode', use3D);
   layout();
   window.addEventListener('resize', layout);
@@ -1067,6 +1097,7 @@ async function boot() {
       ui.endMain.classList.add('caps');
       ui.endMain.textContent = 'Your wish has already been made.';
       ui.endMain.classList.add('on');
+      track('revisit_blocked');
     }, 1600);
     setTimeout(() => {
       ui.endSub.textContent = 'Only one wish per life per person. No multiple attempts.';
@@ -1101,6 +1132,7 @@ async function boot() {
       setTimeout(() => ui.gateTitle.classList.add('on'), 400);
       setTimeout(() => ui.gate.classList.add('on'), 400);
       setTimeout(() => ui.gate.classList.add('go'), 2200);
+      showCredit(1600);
     }
   }
 
@@ -1110,6 +1142,11 @@ async function boot() {
     last = now;
     update(dt);
     render();
+    if (!readyAt) {
+      // the stage (box or broken halves) is on screen for the first time
+      readyAt = performance.now();
+      track('scene_ready', { load_ms: Math.round(readyAt), renderer });
+    }
     requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);

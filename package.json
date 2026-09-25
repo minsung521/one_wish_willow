@@ -1,0 +1,9 @@
+{
+  "name": "one-wish-willow",
+  "private": true,
+  "description": "Static site; package.json only carries the dependency of the api/wish function. There is no build step.",
+  "type": "module",
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0"
+  }
+}
