@@ -2,7 +2,7 @@
 
 // PostHog project, US Cloud. A project token is public by design: it can send
 // events but not read them.
-export const POSTHOG_KEY = 'phc_Bv5AMLBBPJhoeniaa28Ew4Xh7FvEDjhJgnShPikQGWhe';
+export const POSTHOG_KEY = 'phc_qnAFakBY8siycbwEoQmDAiRNUH7bhHeYTmNwFPC8nrPb';
 export const POSTHOG_HOST = 'https://us.i.posthog.com';
 
 // Sent as `app_version` with every event and every stored wish. A site with no
