@@ -62,7 +62,6 @@ let time = 0;
 let light = 0;
 let lightTarget = 0;
 let lightRate = 0.3;
-let onLightSettled = null; // runs once, when the light has all but reached its target
 let flash = 0, flashX = 0, flashY = 0;
 let shake = 0, punch = 0;
 let hitstop = 0;
@@ -728,11 +727,6 @@ function update(dtReal) {
   const dt = dtReal * ts;
 
   light = lerp(light, lightTarget, 1 - Math.exp(-dtReal * lightRate * 3));
-  if (onLightSettled && Math.abs(light - lightTarget) < 0.03) {
-    const fn = onLightSettled;
-    onLightSettled = null;
-    fn();
-  }
   flash *= Math.exp(-dtReal * 18);
   shake *= Math.exp(-dtReal * (shake > 0.2 ? 8 : 13));
   punch *= Math.exp(-dtReal * 6);
@@ -1000,12 +994,11 @@ const wish = new WishUI({
         // the room sinks further as the waiting begins
         lightTarget = 0.2;
         lightRate = 0.1;
-        // once it has finished sinking, offer to pass it on
-        onLightSettled = () => share.show('ending');
       }, 500);
       setTimeout(() => {
         ui.endSub.textContent = 'After granting your wish, the One Wish Willow™ loses its magical properties.';
         ui.endSub.classList.add('on');
+        share.show('ending');
       }, 3000);
       if (use3D) showCredit(4200);
     });
@@ -1064,6 +1057,8 @@ async function boot() {
   if (record.state === 'wished') {
     phase = 'already';
     ui.gate.hidden = true;
+    // timed from the moment this screen opens
+    share.show('revisit');
     restorePieces();
     lightTarget = 0.3;
     lightRate = 0.16;
@@ -1078,7 +1073,6 @@ async function boot() {
       ui.endSub.classList.add('on');
     }, 3800);
     showCredit(4400);
-    share.show('revisit');
   } else if (record.state === 'broken') {
     // broken, but the wish was never written
     phase = 'wish';

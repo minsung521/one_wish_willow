@@ -22,7 +22,10 @@ const SHARE_COPY = SHARE_URL;
 const LABEL = 'Share';
 const COPIED = 'Link copied';
 
-const SHOW_DELAY = 2000; // ms before it comes up
+// When it comes up. These are real elapsed time (timers, not frames), so a
+// slow device shows it at the same moment as a fast one.
+const ENDING_DELAY = 2000; // ms after the ending's last line appears
+const REVISIT_DELAY = 1000; // ms after the revisit screen opens
 const LINGER = 8000; // ms it stays up once nothing is holding it
 const GAP = 14; // px above the credit line
 
@@ -54,14 +57,14 @@ export class ShareToast {
     this._bind();
   }
 
-  /** Bring it up on this screen after a short pause. */
+  /** Bring it up on this screen after its pause. */
   show(screen) {
     this.screen = screen;
     clearTimeout(this.delay);
     this.delay = setTimeout(() => {
       this.armed = true;
       this._open();
-    }, SHOW_DELAY);
+    }, screen === 'ending' ? ENDING_DELAY : REVISIT_DELAY);
   }
 
   _bind() {
