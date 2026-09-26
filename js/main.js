@@ -34,6 +34,7 @@ const coarse = window.matchMedia('(pointer: coarse)').matches;
 const THETA = -0.03;
 const OPEN_T = 2.3; // seconds from tapping the box to holding the willow
 const BOX_GONE = 0.9; // the box has fully faded by then
+const LIGHT_GAIN = 1.1; // the room's light, on every screen, a touch brighter than its targets
 const BOX_TO_WILLOW = 1.428 / 1.835; // willow length / box length in the model
 const MAX_FRAME_DT = 0.05; // s: a longer frame (a tab coming back, a stall) counts as this much
 // The release spring is stiff (10 Hz): one explicit step per frame blows up
@@ -967,7 +968,7 @@ function render() {
   }
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const dark = 1 - light;
+  const dark = 1 - Math.min(1, light * LIGHT_GAIN);
   if (dark > 0.002) {
     ctx.fillStyle = `rgba(2,2,2,${dark.toFixed(3)})`;
     ctx.fillRect(0, 0, W, H);

@@ -271,7 +271,7 @@ export class Stage {
     // stage light, and make it matte: the baked roughness map is far too glossy
     // the baked colour map is blotchy; keep only its relief and use one flat, dark bark tone
     bark.map = null;
-    bark.color.set(0x35281f);
+    bark.color.set(0x2c211a);
     bark.roughnessMap = null;
     bark.roughness = 0.82;
     bark.metalness = 0;
