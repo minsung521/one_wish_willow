@@ -194,6 +194,21 @@ Only into the body of the `/api/wish` request, and from there into the `wishes` 
 
 To check: make a wish containing `OWW_SENTINEL_7319`. It should be found in the `wishes` table and nowhere else (PostHog event search, session replays, Vercel function logs, the browser's storage).
 
+## Customer number draft (MIN-157)
+
+The ending now opens with *Thank you for choosing One Wish Willow™!* and *You are customer #004,812.*, then *Wait up to 24 hours…* and the line under it, so the waiting line is the one that lingers. The number is a fixed dummy (`CUSTOMER_NO` in `js/main.js`) until a server-side counter issues real ones. The lines come in at 0.5 s (the number 0.7 s later), 2.4 s and 4.9 s, and the credit at 6.1 s; `ending_viewed` still fires when *Wait up to 24 hours…* appears.
+
+On a `?qa=1` visit the look can be switched for comparison (ignored without `qa=1`):
+
+| Parameter | Effect |
+|---|---|
+| `cn_pad=0` | `#4,812` instead of the zero-padded `#004,812` |
+| `cn_font=nunito` | the number in Nunito 800 instead of Lilita One |
+| `cn_red=1` | the number in the package red |
+| `cn_revisit=1` | the revisit screen also shows *You are customer #004,812.* above *Your wish has already been made.* |
+
+For example `?qa=1&cn_red=1&cn_pad=0`. Reset keeps only `?qa=1`, so add the parameters again after it.
+
 ## QA mode (MIN-125)
 
 For testing on real phones, including the KakaoTalk, Instagram and X in-app browsers: open the site with `?qa=1` (`https://one-wish-willow-eta.vercel.app/?qa=1`). Without it, `js/qa.js` is never requested and nothing below runs, so ordinary visits load and send exactly what they did before.

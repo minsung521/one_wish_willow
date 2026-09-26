@@ -523,7 +523,49 @@ body {
   transition: opacity 2.6s ease;
 }
 .ending-sub.on { opacity: 1; }
+/* MIN-157 draft: thanks + customer number, above the main line */
+.ending-ticket {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 24px;
+}
+.ending.ticket .ending-ticket { display: flex; }
+.ending-thanks,
+.ending-no {
+  opacity: 0;
+  transition: opacity 2.2s ease;
+}
+.ending-thanks:empty { display: none; }
+.ending-thanks {
+  text-wrap: balance;
+  font-weight: 700;
+  font-size: 11.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1.7;
+  color: var(--ink-soft);
+}
+.ending-no {
+  font-weight: 600;
+  font-size: clamp(15px, 2vw, 18px);
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  transition-delay: 0.7s;
+}
+.ending-no b {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 1.3em;
+  letter-spacing: 0.04em;
+}
+.ending.cn-nunito .ending-no b { font-family: var(--serif); font-weight: 800; font-size: 1.15em; font-variant-numeric: tabular-nums; }
+.ending.cn-red .ending-no b { color: var(--red); }
+.ending.ticket-on .ending-thanks { opacity: 1; }
+.ending.ticket-on .ending-no { opacity: 0.94; }
 /* the revisit screen has nothing to build up to: it comes in quicker */
+.ending.revisit .ending-no { transition-duration: 1.6s; transition-delay: 0s; }
 .ending.revisit .ending-main { transition-duration: 1.6s, 1.8s; }
 .ending.revisit .ending-sub { transition-duration: 1.4s; }
 .credit.quick { transition-duration: 1.2s; }

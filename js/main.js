@@ -27,6 +27,8 @@ const ui = {
   ending: $('ending'),
   endMain: $('ending-main'),
   endSub: $('ending-sub'),
+  endThanks: $('ending-thanks'),
+  endNo: $('ending-no'),
 };
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -999,6 +1001,38 @@ function makeGrain() {
   document.querySelector('.grain').style.backgroundImage = `url(${c.toDataURL()})`;
 }
 
+// ------------------------------------------------------------------ customer number
+
+// MIN-157 draft: "You are customer #004,812." above the last line. The number
+// is a fixed dummy until a server-side counter issues real ones.
+const CUSTOMER_NO = 4812;
+// On ?qa=1 the look can be switched for comparison (see README, QA mode).
+const cn = (() => {
+  const q = new URLSearchParams(visit.qa ? location.search : '');
+  return {
+    pad: q.get('cn_pad') !== '0',
+    font: q.get('cn_font') === 'nunito' ? 'nunito' : 'lilita',
+    red: q.get('cn_red') === '1',
+    revisit: q.get('cn_revisit') === '1',
+  };
+})();
+ui.ending.classList.toggle('cn-nunito', cn.font === 'nunito');
+ui.ending.classList.toggle('cn-red', cn.red);
+
+/** 4812 → "#004,812", like a printed serial number (or "#4,812" unpadded). */
+function customerNo(n) {
+  const digits = cn.pad ? String(n).padStart(6, '0') : String(n);
+  return '#' + digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function showTicket(thanks) {
+  ui.endThanks.textContent = thanks ? 'Thank you for choosing One Wish Willow™!' : '';
+  ui.endNo.replaceChildren('You are customer ', Object.assign(document.createElement('b'), { textContent: customerNo(CUSTOMER_NO) }), '.');
+  ui.ending.classList.add('ticket');
+  // next frame, so the lines fade in from the hidden state
+  requestAnimationFrame(() => ui.ending.classList.add('ticket-on'));
+}
+
 // ------------------------------------------------------------------ wish
 
 const share = new ShareToast({ avoid: [ui.credit] });
@@ -1022,17 +1056,19 @@ const wish = new WishUI({
     lightRate = 0.12;
     wish.release(fxCanvas, () => {
       phase = 'done';
+      // the thanks and the number first, so the waiting line is the one that lingers
+      setTimeout(() => showTicket(true), 500);
       setTimeout(() => {
         ui.endMain.textContent = 'Wait up to 24 hours for your wish to come true.';
         ui.endMain.classList.add('on');
         track('ending_viewed');
-      }, 500);
+      }, 2400);
       setTimeout(() => {
         ui.endSub.textContent = 'After granting your wish, the One Wish Willow™ loses its magical properties.';
         ui.endSub.classList.add('on');
         share.show('ending');
-      }, 3000);
-      showCredit(4200);
+      }, 4900);
+      showCredit(6100);
     });
   },
 });
@@ -1105,6 +1141,7 @@ async function boot() {
     ui.ending.classList.add('revisit');
     ui.credit.classList.add('quick');
     setTimeout(() => {
+      if (cn.revisit) showTicket(false);
       ui.endMain.classList.add('caps');
       ui.endMain.textContent = 'Your wish has already been made.';
       ui.endMain.classList.add('on');
