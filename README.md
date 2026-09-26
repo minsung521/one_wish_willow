@@ -66,6 +66,7 @@ At the break, the same pixels are split along a jagged fracture. There are long 
 | `js/visit.js` | Runs before the stage: client id, first visit, first entry, device, in-app browser; starts analytics |
 | `js/analytics.js` | `track()` and PostHog's init options; everything is dropped quietly if the SDK is blocked |
 | `js/keep.js` | The one request that carries the wish text, to `/api/wish` |
+| `js/qa.js` | The `?qa=1` overlay and Reset button, loaded only on `?qa=1` (see QA mode) |
 | `api/wish.js` | Vercel Function: validates, rate-limits and stores the wish in Postgres |
 | `db/schema.sql` | The `wishes` table (run once in the Neon SQL editor) |
 | `scripts/og/render.mjs` | Renders `og.png` and the PNG icons from the site (not deployed) |
@@ -87,13 +88,15 @@ With `JINGLE_URL = null` the file is never requested and the synthesised jingle 
 
 That tap is also the user activation browsers need before they allow audio, so the snap can sound at the exact moment of the break. The snap is the only sound after that: a short, dry crack, with no sounds when the halves land.
 
+Before the audio context is made, `navigator.audioSession.type` is set to `playback` where the browser has it (Safari), so the sound plays as media and the silent switch doesn't mute it.
+
 Every sound checks that the audio context is actually running. If it is not, the sound is dropped instead of queued, so a snap can never play late on a later tap.
 
 ### The one-time rule
 - The stick counts as broken the moment it snaps. If the visitor leaves before writing a wish, they come back to the broken halves and the wish prompt.
 - Once a wish is made, every later visit shows the halves where they fell, with *YOUR WISH HAS ALREADY BEEN MADE.*
 - The wish text is never stored in the browser. It is sent once to `/api/wish` and kept there privately (see below).
-- For testing, clearing the site's data (`localStorage` plus the `one-wish-willow` cookie) resets it.
+- For testing, clearing the site's data (`localStorage` plus the `one-wish-willow` cookie) resets it. On a phone, and in in-app browsers where that is hard to reach, use **Reset** in QA mode instead (see below).
 
 ### Share
 A small **Share** pill comes up at the bottom, above the credit line: on the ending screen 2 s after its last line appears, on the revisit screen 1 s after it opens. Both are timed in real elapsed time, not frames, so slow devices show it at the same moment. It leaves after about 8 s, but not while it is hovered, touched or keyboard-focused. After that, a tap anywhere brings it back.
@@ -159,7 +162,7 @@ When the 1.5 s hold completes, `js/keep.js` sends one `POST /api/wish` (`keepali
 
 ## Analytics (MIN-124)
 
-PostHog (US Cloud) is loaded by its official snippet in `<head>` and started by `js/visit.js` before the stage. Autocapture, automatic page views, page-leave, heatmaps, dead clicks, exceptions and web vitals are all off, so only the events below are sent. They all go through `track()` in `js/analytics.js`. Each event carries `app_version`, `device_type` and `in_app_browser` (`instagram` / `kakaotalk` / `facebook` / `naver` / `other` / `none`, worked out from the user agent, which itself is not sent). From `scene_ready` on, each event also carries `renderer` (`webgl` / `fallback`). The first entry is fixed with `register_once`: `entry_source`, `entry_referrer`, `entry_utm_source`, `entry_utm_medium`, `entry_utm_campaign`, `entry_utm_content`. The single `$pageview` is sent after these are registered, so it already has them.
+PostHog (US Cloud) is loaded by its official snippet in `<head>` and started by `js/visit.js` before the stage. Autocapture, automatic page views, page-leave, heatmaps, dead clicks, exceptions and web vitals are all off, so only the events below are sent. They all go through `track()` in `js/analytics.js`. Each event carries `app_version`, `device_type` and `in_app_browser` (`instagram` / `kakaotalk` / `facebook` / `naver` / `other` / `none`, worked out from the user agent, which itself is not sent), and `qa: true` on a `?qa=1` visit (see QA mode). From `scene_ready` on, each event also carries `renderer` (`webgl` / `fallback`). The first entry is fixed with `register_once`: `entry_source`, `entry_referrer`, `entry_utm_source`, `entry_utm_medium`, `entry_utm_campaign`, `entry_utm_content`. The single `$pageview` is sent after these are registered, so it already has them.
 
 `entry_source` is `share` for `?ref=share`, `utm` when there is a `utm_source`, `referral` for another site's referrer, and `direct` otherwise. Instagram and KakaoTalk in-app browsers usually send no referrer, so they show up as `direct` unless the link carries UTM tags. Use `utm_content` to tell posts apart.
 
@@ -190,3 +193,21 @@ Only into the body of the `/api/wish` request, and from there into the `wishes` 
 - the function never logs the request, only an error code.
 
 To check: make a wish containing `OWW_SENTINEL_7319`. It should be found in the `wishes` table and nowhere else (PostHog event search, session replays, Vercel function logs, the browser's storage).
+
+## QA mode (MIN-125)
+
+For testing on real phones, including the KakaoTalk, Instagram and X in-app browsers: open the site with `?qa=1` (`https://one-wish-willow-eta.vercel.app/?qa=1`). Without it, `js/qa.js` is never requested and nothing below runs, so ordinary visits load and send exactly what they did before.
+
+A small overlay sits top left. It takes no touches except its Reset button, so the stick can be pulled through it.
+
+| Line | Shows |
+|---|---|
+| `fps` | now (the last 0.5 s) · 5 s average · 5 s low (the longest frame in the last 5 s) |
+| `grab` | from grabbing the stick to the snap, the snap's own frame included: average fps, low fps, frames longer than 50 ms, and `grabbing` / `released` / `snapped` with the time. A new grab starts it over; after the snap it stays |
+| `scene` | `scene_ready`'s `load_ms` · renderer (`webgl` / `fallback`) · the DPR actually drawn at, then the device's (`dev`) |
+| `audio` | the `AudioContext` state, live (`none` until the first tap) · `navigator.audioSession` type/state, or `n/a` |
+| `vib` | whether `navigator.vibrate` exists · the `in_app_browser` value events carry |
+
+**Reset** forgets this browser and reloads `?qa=1`: it removes `one-wish-willow`, `oww_client_id`, `oww_visited` and `oww_entry` from `localStorage`, expires the `one-wish-willow` cookie, and resets PostHog's ids (`posthog.reset(true)`, and its stored copy is removed too). The next run starts on the first screen as a first visit with a new `client_id`, so `/api/wish`'s one-wish-per-`client_id` rule doesn't stop it and every run goes all the way to the stored wish. The per-IP limit (20 an hour) still applies.
+
+Every event on a `?qa=1` visit carries `qa: true`, the `$pageview` included. It is not carried over: a later visit without `?qa=1` drops it. To leave QA traffic out in PostHog, filter on `qa` is not set. Wishes made in QA mode are stored like any other (the server is not told about QA mode); they and the QA events are to be deleted together later (MIN-141).
