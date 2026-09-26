@@ -434,18 +434,28 @@ body {
 }
 
 .wish-note {
-  margin: 16px 0 0;
-  font-size: 11.5px;
+  /* the fine print sits at the foot of the screen, out of the way of the wish */
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  margin: 0;
+  padding: 0 16px;
+  text-wrap: balance;
+  font-size: 10.5px;
   font-weight: 600;
-  line-height: 1.7;
+  line-height: 1.6;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(220, 217, 200, 0.32);
+  color: rgba(220, 217, 200, 0.28);
   opacity: 0;
   transition: opacity 1.2s ease;
 }
 .hold.ready + .wish-note { opacity: 1; }
+/* with the keyboard up the foot of the screen is the keyboard's edge: keep it clear */
+.wish.compact .wish-note { opacity: 0; }
 
+.wish.leaving .wish-kicker,
 .wish.leaving .wish-q,
 .wish.leaving .wish-line,
 .wish.leaving .hold,
@@ -513,6 +523,10 @@ body {
   transition: opacity 2.6s ease;
 }
 .ending-sub.on { opacity: 1; }
+/* the revisit screen has nothing to build up to: it comes in quicker */
+.ending.revisit .ending-main { transition-duration: 1.6s, 1.8s; }
+.ending.revisit .ending-sub { transition-duration: 1.4s; }
+.credit.quick { transition-duration: 1.2s; }
 
 /* ------------------------------------------------------------------ */
 /* Share: a small pill that comes up for a while, then goes             */

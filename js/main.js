@@ -24,6 +24,7 @@ const ui = {
   credit: $('credit'),
   creditModel: $('credit-model'),
   hint: $('hint'),
+  ending: $('ending'),
   endMain: $('ending-main'),
   endSub: $('ending-sub'),
 };
@@ -641,7 +642,7 @@ function snap() {
   flash = 1;
   shake = 1;
   punch = 1;
-  lightTarget = 0.52;
+  lightTarget = 0.624;
   lightRate = 0.26;
 
   record = { v: 2, seed, state: 'broken', sign, at: Date.now() };
@@ -1025,9 +1026,6 @@ const wish = new WishUI({
         ui.endMain.textContent = 'Wait up to 24 hours for your wish to come true.';
         ui.endMain.classList.add('on');
         track('ending_viewed');
-        // the room sinks further as the waiting begins
-        lightTarget = 0.2;
-        lightRate = 0.1;
       }, 500);
       setTimeout(() => {
         ui.endSub.textContent = 'After granting your wish, the One Wish Willow™ loses its magical properties.';
@@ -1052,6 +1050,8 @@ function enter(e) {
   ui.gate.classList.add('leaving');
   setTimeout(() => { ui.gate.hidden = true; }, 900);
   ui.gateTitle.classList.remove('on');
+  // a tap before the credit has come up must also stop it coming up later
+  clearTimeout(creditTimer);
   ui.credit.classList.remove('on');
   if (use3D) {
     phase = 'opening';
@@ -1070,8 +1070,10 @@ function enter(e) {
   }, 3800 + (use3D ? OPEN_T * 1000 : 0));
 }
 
+let creditTimer = 0;
 function showCredit(delay) {
-  setTimeout(() => ui.credit.classList.add('on'), delay);
+  clearTimeout(creditTimer);
+  creditTimer = setTimeout(() => ui.credit.classList.add('on'), delay);
 }
 
 async function boot() {
@@ -1096,29 +1098,31 @@ async function boot() {
   if (record.state === 'wished') {
     phase = 'already';
     ui.gate.hidden = true;
-    // timed from the moment this screen opens
-    share.show('revisit');
     restorePieces();
-    lightTarget = 0.3;
+    lightTarget = 0.4;
     lightRate = 0.16;
     canvas.setAttribute('aria-label', 'The One Wish Willow lies broken in two.');
+    ui.ending.classList.add('revisit');
+    ui.credit.classList.add('quick');
     setTimeout(() => {
       ui.endMain.classList.add('caps');
       ui.endMain.textContent = 'Your wish has already been made.';
       ui.endMain.classList.add('on');
       track('revisit_blocked');
-    }, 1600);
+    }, 800);
     setTimeout(() => {
       ui.endSub.textContent = 'Only one wish per life per person. No multiple attempts.';
       ui.endSub.classList.add('on');
-    }, 3800);
-    showCredit(4400);
+      // last in the sequence, after the lines and the credit have begun to rise
+      share.show('revisit');
+    }, 1800);
+    showCredit(2200);
   } else if (record.state === 'broken') {
     // broken, but the wish was never written
     phase = 'wish';
     ui.gate.hidden = true;
     restorePieces();
-    lightTarget = 0.52;
+    lightTarget = 0.624;
     lightRate = 0.2;
     canvas.setAttribute('aria-label', 'The One Wish Willow lies broken in two.');
     setTimeout(() => wish.show(), 1800);
@@ -1133,12 +1137,12 @@ async function boot() {
       lightTarget = 0.88;
       lightRate = 0.25;
       placeGate();
-      setTimeout(() => ui.gateTitle.classList.add('on'), 700);
+      setTimeout(() => { if (phase === 'gate') ui.gateTitle.classList.add('on'); }, 700);
       setTimeout(() => ui.gate.classList.add('on'), 700);
       showCredit(1600);
     } else {
       ui.gateTitle.style.top = Math.round(H * 0.5 - 90) + 'px';
-      setTimeout(() => ui.gateTitle.classList.add('on'), 400);
+      setTimeout(() => { if (phase === 'gate') ui.gateTitle.classList.add('on'); }, 400);
       setTimeout(() => ui.gate.classList.add('on'), 400);
       setTimeout(() => ui.gate.classList.add('go'), 2200);
       showCredit(1600);
