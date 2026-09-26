@@ -42,6 +42,12 @@ export class Sound {
     if (!this.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
+      // Safari's Audio Session API: play as media, so the silent switch doesn't mute it
+      try {
+        if ('audioSession' in navigator) navigator.audioSession.type = 'playback';
+      } catch {
+        /* ignore */
+      }
       try {
         this.ctx = new AC({ latencyHint: 'interactive' });
       } catch {

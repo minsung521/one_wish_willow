@@ -117,6 +117,15 @@ function inAppBrowser() {
   return 'none';
 }
 
+/** ?qa=1: the on-device QA overlay (js/qa.js) and `qa: true` on every event. */
+function qaMode() {
+  try {
+    return new URLSearchParams(location.search).get('qa') === '1';
+  } catch {
+    return false;
+  }
+}
+
 const record = loadRecord(); // read before main.js writes a fresh one
 const savedFirst = Number(read(VISITED_KEY)) || 0;
 if (!savedFirst) write(VISITED_KEY, String(Date.now()));
@@ -130,11 +139,17 @@ export const visit = {
   entry,
   deviceType: deviceType(),
   inAppBrowser: inAppBrowser(),
+  qa: qaMode(),
 };
 
 startAnalytics({
   clientId: visit.clientId,
-  props: { app_version: APP_VERSION, device_type: visit.deviceType, in_app_browser: visit.inAppBrowser },
+  props: {
+    app_version: APP_VERSION,
+    device_type: visit.deviceType,
+    in_app_browser: visit.inAppBrowser,
+    ...(visit.qa ? { qa: true } : {}),
+  },
   once: {
     entry_source: entry.source,
     entry_referrer: entry.referrer,

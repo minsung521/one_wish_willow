@@ -76,8 +76,10 @@ export function startAnalytics({ clientId, props, once }) {
         },
       },
     });
-    // the renderer is known only once the stage is up; don't carry the last visit's
+    // the renderer is known only once the stage is up; don't carry the last visit's.
+    // Nor its qa flag: only a ?qa=1 visit registers it again.
     ph.unregister('renderer');
+    ph.unregister('qa');
     ph.register(props);
     ph.register_once(once);
     ph.capture('$pageview');
