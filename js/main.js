@@ -24,6 +24,7 @@ const ui = {
   credit: $('credit'),
   creditModel: $('credit-model'),
   hint: $('hint'),
+  ending: $('ending'),
   endMain: $('ending-main'),
   endSub: $('ending-sub'),
 };
@@ -1100,19 +1101,21 @@ async function boot() {
     lightTarget = 0.3;
     lightRate = 0.16;
     canvas.setAttribute('aria-label', 'The One Wish Willow lies broken in two.');
+    ui.ending.classList.add('revisit');
+    ui.credit.classList.add('quick');
     setTimeout(() => {
       ui.endMain.classList.add('caps');
       ui.endMain.textContent = 'Your wish has already been made.';
       ui.endMain.classList.add('on');
       track('revisit_blocked');
-    }, 1600);
+    }, 800);
     setTimeout(() => {
       ui.endSub.textContent = 'Only one wish per life per person. No multiple attempts.';
       ui.endSub.classList.add('on');
       // last in the sequence, after the lines and the credit have begun to rise
       share.show('revisit');
-    }, 3800);
-    showCredit(4400);
+    }, 1800);
+    showCredit(2200);
   } else if (record.state === 'broken') {
     // broken, but the wish was never written
     phase = 'wish';
