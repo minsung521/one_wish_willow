@@ -24,7 +24,7 @@ const COPIED = 'Link copied';
 // When it comes up. These are real elapsed time (timers, not frames), so a
 // slow device shows it at the same moment as a fast one.
 const ENDING_DELAY = 2000; // ms after the ending's last line appears
-const REVISIT_DELAY = 1000; // ms after the revisit screen opens
+const REVISIT_DELAY = 1000; // ms after the revisit screen's last line appears
 const LINGER = 8000; // ms it stays up once nothing is holding it
 const GAP = 14; // px above the credit line
 

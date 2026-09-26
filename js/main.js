@@ -1096,8 +1096,6 @@ async function boot() {
   if (record.state === 'wished') {
     phase = 'already';
     ui.gate.hidden = true;
-    // timed from the moment this screen opens
-    share.show('revisit');
     restorePieces();
     lightTarget = 0.3;
     lightRate = 0.16;
@@ -1111,6 +1109,8 @@ async function boot() {
     setTimeout(() => {
       ui.endSub.textContent = 'Only one wish per life per person. No multiple attempts.';
       ui.endSub.classList.add('on');
+      // last in the sequence, after the lines and the credit have begun to rise
+      share.show('revisit');
     }, 3800);
     showCredit(4400);
   } else if (record.state === 'broken') {

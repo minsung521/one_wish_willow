@@ -96,7 +96,7 @@ Every sound checks that the audio context is actually running. If it is not, the
 - For testing, clearing the site's data (`localStorage` plus the `one-wish-willow` cookie) resets it.
 
 ### Share
-A small **Share** pill comes up at the bottom, above the credit line: on the ending screen 2 s after its last line appears, on the revisit screen 1 s after it opens. Both are timed in real elapsed time, not frames, so slow devices show it at the same moment. It leaves after about 8 s, but not while it is hovered, touched or keyboard-focused. After that, a tap anywhere brings it back.
+A small **Share** pill comes up at the bottom, above the credit line: on the ending screen 2 s after its last line appears, on the revisit screen 1 s after its last line appears, so it comes up after the lines and the credit rather than ahead of them. Both are timed in real elapsed time, not frames, so slow devices show it at the same moment. It leaves after about 8 s, but not while it is hovered, touched or keyboard-focused. After that, a tap anywhere brings it back.
 
 - **Phones and tablets** (`pointer: coarse`) open the system share sheet. Closing the sheet ends there, and the clipboard is left alone. If there is no sheet, or it fails for any other reason, the line and the link are copied.
 - **Desktop** copies the line and the link straight away. The same pill then reads *Link copied*.
