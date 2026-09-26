@@ -34,7 +34,7 @@ const coarse = window.matchMedia('(pointer: coarse)').matches;
 const THETA = -0.03;
 const OPEN_T = 2.3; // seconds from tapping the box to holding the willow
 const BOX_GONE = 0.9; // the box has fully faded by then
-const LIGHT_GAIN = 1.1; // the room's light, on every screen, a touch brighter than its targets
+const LIGHT_GAIN_BROKEN = 1.2; // once the stick is broken the room is this much brighter than its targets
 const BOX_TO_WILLOW = 1.428 / 1.835; // willow length / box length in the model
 const MAX_FRAME_DT = 0.05; // s: a longer frame (a tab coming back, a stall) counts as this much
 // The release spring is stiff (10 Hz): one explicit step per frame blows up
@@ -755,7 +755,10 @@ function update(dtReal) {
   }
   const dt = dtReal * ts;
 
-  light = lerp(light, lightTarget, 1 - Math.exp(-dtReal * lightRate * 3));
+  // before the snap the room keeps its own targets; after it, the halves get a little more light
+  const unbroken = phase === 'gate' || phase === 'opening' || phase === 'intro' || phase === 'idle';
+  const target = unbroken ? lightTarget : Math.min(1, lightTarget * LIGHT_GAIN_BROKEN);
+  light = lerp(light, target, 1 - Math.exp(-dtReal * lightRate * 3));
   flash *= Math.exp(-dtReal * 18);
   shake *= Math.exp(-dtReal * (shake > 0.2 ? 8 : 13));
   punch *= Math.exp(-dtReal * 6);
@@ -968,7 +971,7 @@ function render() {
   }
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const dark = 1 - Math.min(1, light * LIGHT_GAIN);
+  const dark = 1 - light;
   if (dark > 0.002) {
     ctx.fillStyle = `rgba(2,2,2,${dark.toFixed(3)})`;
     ctx.fillRect(0, 0, W, H);
