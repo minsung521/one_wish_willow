@@ -16,7 +16,7 @@ It must be served over HTTP(S), because ES modules don't load from `file://`.
 
 ## The 3D model
 
-The box and the willow come from **["One Wish Willow from Obsession movie"](https://sketchfab.com/3d-models/one-wish-willow-from-obsession-movie-7269f920284c4bb7a169ee110034d164) by [AlyStation](https://sketchfab.com/alyxyuu)**, licensed under [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). The credit is shown on the first screen and after the wish, above two notices: *Wishes are kept anonymously.* and *Unofficial fan-made project. Not affiliated with Obsession or its studio.* When the painted fallback is used, the model credit is left out and the notices stay. The original license note is in `assets/willow/license.txt`.
+The box and the willow come from **["One Wish Willow from Obsession movie"](https://sketchfab.com/3d-models/one-wish-willow-from-obsession-movie-7269f920284c4bb7a169ee110034d164) by [AlyStation](https://sketchfab.com/alyxyuu)**, licensed under [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). The credit is shown on the first screen and after the wish, ending in *· modified* because the model was changed (CC BY 4.0 asks for that), above two notices: *Wishes are kept anonymously.* and *Unofficial fan-made project. Not affiliated with Obsession or its studio.* When the painted fallback is used, the model credit is left out and the notices stay. The original license note is in `assets/willow/license.txt`.
 
 What the downloaded model contains, and what was done with it:
 
@@ -26,6 +26,16 @@ What the downloaded model contains, and what was done with it:
 | Meshes | `box.001` (8 triangles, a triangular prism) and `willow.001` (4,832 triangles), separate nodes | used separately: the box on the first screen, the willow for the snap |
 | Materials | `Box_baked` (baseColor + metallicRoughness), `Bark_baked` (baseColor + metallicRoughness + normal), all 2048² | box colour 1536², bark colour/normal 1024², roughness maps 512² |
 | Break | the willow is one closed mesh | split at runtime (`js/stage.js`) along a ragged cut into two rigid halves, each capped with a splintered, faceted fracture face |
+
+The same list of changes is kept at the end of `assets/willow/license.txt`:
+
+```text
+Changes made to the original model:
+- Textures recompressed (glTF 6.3 MB -> about 1.0 MB)
+- Box roughness map removed and rendered as matte
+- Willow color map replaced with a flat dark brown; normal map kept
+- At runtime the willow mesh is split into two pieces with added break faces
+```
 
 `three.js` r170 (MIT) is vendored in `vendor/three/`, so there are no CDN requests. If WebGL or the model fails to load, the previous procedural stick (`js/willow.js`) is used instead.
 
@@ -52,18 +62,28 @@ At the break, the same pixels are split along a jagged fracture. There are long 
 | `js/wish.js` | Wish prompt, press-and-hold confirm, and letters that burn away one by one |
 | `js/storage.js` | One-time rule: state lives in localStorage and is mirrored to a cookie |
 | `js/share.js` | The Share toast on the ending and revisit screens |
-| `js/config.js` | Constants: PostHog key and host, `APP_VERSION`, the wish API path |
+| `js/config.js` | Constants: PostHog key and host, `APP_VERSION`, the wish API path, the jingle file (`JINGLE_URL`) |
 | `js/visit.js` | Runs before the stage: client id, first visit, first entry, device, in-app browser; starts analytics |
 | `js/analytics.js` | `track()` and PostHog's init options; everything is dropped quietly if the SDK is blocked |
 | `js/keep.js` | The one request that carries the wish text, to `/api/wish` |
 | `api/wish.js` | Vercel Function: validates, rate-limits and stores the wish in Postgres |
 | `db/schema.sql` | The `wishes` table (run once in the Neon SQL editor) |
+| `scripts/og/render.mjs` | Renders `og.png` and the PNG icons from the site (not deployed) |
 
 ### Copy and type
 All on-screen text is taken from the One Wish Willow packaging as reproduced on the model's box texture (which matches the film prop) and from the official product site: "Remove from the box and just make a wish!", "Spark the middle and break in half", "What are you wishing for?", "State your wish clearly", "Single Use Only. Once made, it cannot be undone or repeated.", "Wait up to 24 hours for your wish to come true.", "Only one wish per life per person." The type pairs a chunky rounded display face (Lilita One) for headings, in the spirit of the box's arched title, with Nunito for the fine print, in the package's cream on a dark stage with its red as the one accent.
 
 ### Flow and sound
-The first screen shows the box. Tapping it plays the film's One Wish Willow jingle (`assets/audio/jingle.wav`, the music-box cue cut from the supplied recording, normalised, with fades), and the willow rises out of the dissolving box. If the file fails to load, a synthesised jingle plays instead.
+The first screen shows the box. Tapping it plays the film's One Wish Willow jingle (`assets/audio/jingle.wav`, the music-box cue cut from the supplied recording, normalised, with fades), and the willow rises out of the dissolving box. If the file fails to load, a synthesised jingle plays instead. The file is set by `JINGLE_URL` in `js/config.js`. The willow rises on a fixed 2.3 s, whichever jingle plays.
+
+```text
+Jingle kill switch
+- Drop the film audio: set JINGLE_URL = null in js/config.js, commit, deploy.
+- Replace it: put the new file under assets/audio/, point JINGLE_URL at it.
+- Then bump APP_VERSION.
+```
+
+With `JINGLE_URL = null` the file is never requested and the synthesised jingle plays.
 
 That tap is also the user activation browsers need before they allow audio, so the snap can sound at the exact moment of the break. The snap is the only sound after that: a short, dry crack, with no sounds when the halves land.
 
@@ -78,13 +98,41 @@ Every sound checks that the audio context is actually running. If it is not, the
 ### Share
 A small **Share** pill comes up at the bottom, above the credit line: on the ending screen 2 s after its last line appears, on the revisit screen 1 s after it opens. Both are timed in real elapsed time, not frames, so slow devices show it at the same moment. It leaves after about 8 s, but not while it is hovered, touched or keyboard-focused. After that, a tap anywhere brings it back.
 
-- **Phones and tablets** (`pointer: coarse`) open the system share sheet. Closing the sheet ends there, and the clipboard is left alone. If there is no sheet, or it fails for any other reason, the link is copied.
-- **Desktop** copies the link straight away. The same pill then reads *Link copied*.
-- If copying fails too, the link is shown as selected text to copy by hand.
+- **Phones and tablets** (`pointer: coarse`) open the system share sheet. Closing the sheet ends there, and the clipboard is left alone. If there is no sheet, or it fails for any other reason, the line and the link are copied.
+- **Desktop** copies the line and the link straight away. The same pill then reads *Link copied*.
+- If copying fails too, the link alone is shown as selected text to copy by hand.
 
-The shared link is always the canonical address plus `?ref=share` (`https://one-wish-willow-eta.vercel.app/?ref=share`). It is never built from the current URL, so the sharer's UTM parameters are not passed on, and it never contains the wish. The share title, text and clipboard content are placeholders at the top of `js/share.js` until the copy is final (MIN-127).
+The shared link is always the canonical address plus `?ref=share` (`https://one-wish-willow-eta.vercel.app/?ref=share`). It is never built from the current URL, so the sharer's UTM parameters are not passed on, and it never contains the wish. The copy, at the top of `js/share.js`:
+
+| | |
+|---|---|
+| Share sheet title | `One Wish Willow` |
+| Share sheet text | `You only get one wish.` |
+| Clipboard | `You only get one wish. https://one-wish-willow-eta.vercel.app/?ref=share` |
 
 Once there is a result, one `share_clicked` event is sent with `method` (`native` / `copy_link`, the method that was actually used), `result` (`success` / `cancel` / `error`, where showing the link as text counts as `error`) and `screen` (`ending` / `revisit`).
+
+### Link previews (MIN-127)
+A shared link has to work as the message on its own, so `<head>` carries the title, description, Open Graph and Twitter Card tags as plain HTML (crawlers don't run JS). `og:url` and the canonical link are always the bare address, even for `?ref=share`. None of this text uses ™: a preview card is seen without the page around it and must not read as the official product.
+
+| | |
+|---|---|
+| Title | `One Wish Willow — You only get one wish.` |
+| Description | `Break the willow. Make one wish. Only one per life. (Unofficial fan-made)` |
+| Image | `og.png`, 1200×630: the first screen with *You only get one wish.* and *Unofficial fan-made*, box and text inside the centre 630×630, which KakaoTalk may crop to |
+| Icons | `favicon.svg`, plus `favicon-32.png` and `apple-touch-icon.png` (180×180) for browsers and previews that don't take SVG |
+
+`og.png` and the two PNG icons are rendered from the site itself by `scripts/og/render.mjs` (headless Chromium via Playwright; analytics and the wish API are blocked while it runs):
+
+```bash
+npm --prefix scripts/og install
+npx --prefix scripts/og playwright install chromium   # once, if Playwright has no Chromium yet
+node scripts/og/render.mjs   # writes og.png, favicon-32.png, apple-touch-icon.png
+```
+
+It prints where the box and both lines fall, and whether they are inside the centre square. `scripts/og/checks/` keeps the captures the first image was checked with: its centre 630×630 crop, and the bottom of the ending screen at 390×844 with the Share pill up.
+
+After changing the image, clear the KakaoTalk cache in the Kakao developers share debugger for both the bare address and `?ref=share`.
 
 ### Controls
 - **Pointer or touch:** press on the stick and pull across it (up or down) to snap it.

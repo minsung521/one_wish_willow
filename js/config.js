@@ -13,3 +13,8 @@ export const APP_VERSION = '5752f8c';
 
 // Where the wish is kept (api/wish.js).
 export const WISH_API = '/api/wish';
+
+// The box's opening jingle. Set to null to drop the recorded file and use
+// the synthesised jingle in js/audio.js instead (e.g. if the film audio
+// has to come down). Swap the path to use a replacement file.
+export const JINGLE_URL = 'assets/audio/jingle.wav';
