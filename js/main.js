@@ -1173,4 +1173,11 @@ window.__oww = {
   get audio() { return sound.ctx ? sound.ctx.state : 'none'; },
   get use3D() { return use3D; },
   get box() { return box; },
+  // for the ?qa=1 overlay
+  get readyMs() { return readyAt ? Math.round(readyAt) : null; },
+  get renderer() { return stage || R ? (use3D ? 'webgl' : 'fallback') : null; },
+  get dpr() { return use3D ? stage.renderer.getPixelRatio() : R ? dpr : null; },
 };
+
+// ?qa=1 only: the on-device QA overlay. Other visits never load it.
+if (visit.qa) import('./qa.js').then((m) => m.startQA()).catch((err) => console.warn('QA overlay failed:', err));
