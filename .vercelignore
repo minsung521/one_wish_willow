@@ -1,2 +1,4 @@
 # not needed on the site; the table is created once in the Neon console
 /db
+# renders og.png and the PNG icons; only the images it writes are deployed
+/scripts

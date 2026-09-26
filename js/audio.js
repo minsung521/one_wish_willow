@@ -13,6 +13,8 @@
 //  clack    : the halves landing
 //  wish     : a held tone while confirming, then a slow swell as it leaves
 
+import { JINGLE_URL } from './config.js';
+
 export class Sound {
   constructor() {
     this.ctx = null;
@@ -22,7 +24,9 @@ export class Sound {
     this.jingleData = null;
     this.jingleBuf = null;
     // the box's opening jingle: start fetching right away so it is ready for the tap
-    fetch('assets/audio/jingle.wav').then((r) => (r.ok ? r.arrayBuffer() : null)).then((d) => { this.jingleData = d; }).catch(() => {});
+    if (JINGLE_URL) {
+      fetch(JINGLE_URL).then((r) => (r.ok ? r.arrayBuffer() : null)).then((d) => { this.jingleData = d; }).catch(() => {});
+    }
   }
 
   get live() {

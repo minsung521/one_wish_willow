@@ -13,11 +13,10 @@ import { track } from './analytics.js';
 const SITE_URL = 'https://one-wish-willow-eta.vercel.app/';
 const SHARE_URL = SITE_URL + '?ref=share';
 
-// TODO(MIN-127): placeholder copy until the share text is settled.
 const SHARE_TITLE = 'One Wish Willow';
 const SHARE_TEXT = 'You only get one wish.';
-// what "copy link" puts on the clipboard (just the link, for now)
-const SHARE_COPY = SHARE_URL;
+// what "copy link" puts on the clipboard: the hook, then the link
+const SHARE_COPY = `${SHARE_TEXT} ${SHARE_URL}`;
 
 const LABEL = 'Share';
 const COPIED = 'Link copied';
