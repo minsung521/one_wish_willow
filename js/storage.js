@@ -1,6 +1,7 @@
 // The branch only breaks once per browser. State is kept in localStorage and
 // mirrored to a long-lived cookie, and whichever copy is further along wins.
-// The wish text itself is never stored: once made, it is gone.
+// The wish text is never stored in the browser: it is sent once, privately,
+// to api/wish.js (js/keep.js) and then let go.
 
 const KEY = 'one-wish-willow';
 const RANK = { fresh: 0, broken: 1, wished: 2 };

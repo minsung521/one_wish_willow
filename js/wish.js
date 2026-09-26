@@ -8,9 +8,10 @@ const HOLD_MS = 1500;
 const INK = [239, 230, 214];
 
 export class WishUI {
-  constructor({ sound, onConfirm }) {
+  constructor({ sound, onConfirm, onStart }) {
     this.sound = sound;
     this.onConfirm = onConfirm;
+    this.onStart = onStart;
     this.root = document.getElementById('wish');
     this.input = document.getElementById('wish-input');
     this.count = document.getElementById('wish-count');
@@ -19,6 +20,7 @@ export class WishUI {
     this.p = 0;
     this.pressing = false;
     this.done = false;
+    this.started = false;
     this.raf = 0;
     this._bind();
     this._viewport();
@@ -84,6 +86,10 @@ export class WishUI {
 
   _changed() {
     const el = this.input;
+    if (!this.started && el.value.length) {
+      this.started = true;
+      if (this.onStart) this.onStart();
+    }
     el.style.height = 'auto';
     el.style.height = el.scrollHeight + 'px';
     const left = el.maxLength - el.value.length;
@@ -171,6 +177,9 @@ export class WishUI {
       this.root.setAttribute('aria-hidden', 'true');
       onDone();
     });
+    // The burn has its own copy of the letters now, and the field is already
+    // transparent: let go of the text so it doesn't linger in the page.
+    this.input.value = '';
   }
 }
 
@@ -189,6 +198,8 @@ class Burn {
     const cs = getComputedStyle(ta);
     const rect = ta.getBoundingClientRect();
     const mirror = document.createElement('div');
+    // it briefly holds the wish text: keep it out of session replays
+    mirror.className = 'ph-no-capture ph-mask';
     const copy = [
       'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing', 'lineHeight',
       'textAlign', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'textTransform',
