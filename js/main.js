@@ -1050,6 +1050,8 @@ function enter(e) {
   ui.gate.classList.add('leaving');
   setTimeout(() => { ui.gate.hidden = true; }, 900);
   ui.gateTitle.classList.remove('on');
+  // a tap before the credit has come up must also stop it coming up later
+  clearTimeout(creditTimer);
   ui.credit.classList.remove('on');
   if (use3D) {
     phase = 'opening';
@@ -1068,8 +1070,10 @@ function enter(e) {
   }, 3800 + (use3D ? OPEN_T * 1000 : 0));
 }
 
+let creditTimer = 0;
 function showCredit(delay) {
-  setTimeout(() => ui.credit.classList.add('on'), delay);
+  clearTimeout(creditTimer);
+  creditTimer = setTimeout(() => ui.credit.classList.add('on'), delay);
 }
 
 async function boot() {
@@ -1133,12 +1137,12 @@ async function boot() {
       lightTarget = 0.88;
       lightRate = 0.25;
       placeGate();
-      setTimeout(() => ui.gateTitle.classList.add('on'), 700);
+      setTimeout(() => { if (phase === 'gate') ui.gateTitle.classList.add('on'); }, 700);
       setTimeout(() => ui.gate.classList.add('on'), 700);
       showCredit(1600);
     } else {
       ui.gateTitle.style.top = Math.round(H * 0.5 - 90) + 'px';
-      setTimeout(() => ui.gateTitle.classList.add('on'), 400);
+      setTimeout(() => { if (phase === 'gate') ui.gateTitle.classList.add('on'); }, 400);
       setTimeout(() => ui.gate.classList.add('on'), 400);
       setTimeout(() => ui.gate.classList.add('go'), 2200);
       showCredit(1600);
