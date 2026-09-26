@@ -34,7 +34,6 @@ const coarse = window.matchMedia('(pointer: coarse)').matches;
 const THETA = -0.03;
 const OPEN_T = 2.3; // seconds from tapping the box to holding the willow
 const BOX_GONE = 0.9; // the box has fully faded by then
-const LIGHT_GAIN_BROKEN = 1.2; // once the stick is broken the room is this much brighter than its targets
 const BOX_TO_WILLOW = 1.428 / 1.835; // willow length / box length in the model
 const MAX_FRAME_DT = 0.05; // s: a longer frame (a tab coming back, a stall) counts as this much
 // The release spring is stiff (10 Hz): one explicit step per frame blows up
@@ -643,7 +642,7 @@ function snap() {
   flash = 1;
   shake = 1;
   punch = 1;
-  lightTarget = 0.52;
+  lightTarget = 0.624;
   lightRate = 0.26;
 
   record = { v: 2, seed, state: 'broken', sign, at: Date.now() };
@@ -755,10 +754,7 @@ function update(dtReal) {
   }
   const dt = dtReal * ts;
 
-  // before the snap the room keeps its own targets; after it, the halves get a little more light
-  const unbroken = phase === 'gate' || phase === 'opening' || phase === 'intro' || phase === 'idle';
-  const target = unbroken ? lightTarget : Math.min(1, lightTarget * LIGHT_GAIN_BROKEN);
-  light = lerp(light, target, 1 - Math.exp(-dtReal * lightRate * 3));
+  light = lerp(light, lightTarget, 1 - Math.exp(-dtReal * lightRate * 3));
   flash *= Math.exp(-dtReal * 18);
   shake *= Math.exp(-dtReal * (shake > 0.2 ? 8 : 13));
   punch *= Math.exp(-dtReal * 6);
@@ -1030,9 +1026,6 @@ const wish = new WishUI({
         ui.endMain.textContent = 'Wait up to 24 hours for your wish to come true.';
         ui.endMain.classList.add('on');
         track('ending_viewed');
-        // the room sinks further as the waiting begins
-        lightTarget = 0.2;
-        lightRate = 0.1;
       }, 500);
       setTimeout(() => {
         ui.endSub.textContent = 'After granting your wish, the One Wish Willow™ loses its magical properties.';
@@ -1102,7 +1095,7 @@ async function boot() {
     phase = 'already';
     ui.gate.hidden = true;
     restorePieces();
-    lightTarget = 0.3;
+    lightTarget = 0.4;
     lightRate = 0.16;
     canvas.setAttribute('aria-label', 'The One Wish Willow lies broken in two.');
     ui.ending.classList.add('revisit');
@@ -1125,7 +1118,7 @@ async function boot() {
     phase = 'wish';
     ui.gate.hidden = true;
     restorePieces();
-    lightTarget = 0.52;
+    lightTarget = 0.624;
     lightRate = 0.2;
     canvas.setAttribute('aria-label', 'The One Wish Willow lies broken in two.');
     setTimeout(() => wish.show(), 1800);
