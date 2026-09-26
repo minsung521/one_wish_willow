@@ -11,7 +11,7 @@ If you use this 3D model in your project be sure to copy paste this credit where
 This work is based on "One Wish Willow from Obsession movie" (https://sketchfab.com/3d-models/one-wish-willow-from-obsession-movie-7269f920284c4bb7a169ee110034d164) by AlyStation (https://sketchfab.com/alyxyuu) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
 
 Changes made to the original model:
-- Textures recompressed (glTF 6.3 MB -> about 1.0 MB)
-- Box roughness map removed and rendered as matte
+- Textures recompressed and downscaled (glTF 6.3 MB -> about 1.0 MB)
+- Roughness maps removed from the box and the willow; both rendered as matte
 - Willow color map replaced with a flat dark brown; normal map kept
 - At runtime the willow mesh is split into two pieces with added break faces

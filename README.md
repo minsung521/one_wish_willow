@@ -31,8 +31,8 @@ The same list of changes is kept at the end of `assets/willow/license.txt`:
 
 ```text
 Changes made to the original model:
-- Textures recompressed (glTF 6.3 MB -> about 1.0 MB)
-- Box roughness map removed and rendered as matte
+- Textures recompressed and downscaled (glTF 6.3 MB -> about 1.0 MB)
+- Roughness maps removed from the box and the willow; both rendered as matte
 - Willow color map replaced with a flat dark brown; normal map kept
 - At runtime the willow mesh is split into two pieces with added break faces
 ```
