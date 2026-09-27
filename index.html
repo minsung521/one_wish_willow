@@ -76,11 +76,12 @@
         <span class="wish-line" aria-hidden="true"></span>
         <span class="wish-count" id="wish-count" aria-hidden="true"></span>
       </div>
+      <!-- under the broken halves, at the foot of the screen; the hold fills the pill itself -->
       <button class="hold" id="wish-hold" type="button" disabled>
+        <span class="hold-fill" id="hold-fill" aria-hidden="true"></span>
         <span class="hold-label">Hold to make your wish</span>
-        <span class="hold-track" aria-hidden="true"><span class="hold-fill" id="hold-fill"></span></span>
       </button>
-      <p class="wish-note" id="wish-note">Single Use Only. Once made, it cannot be undone or repeated.<br>Consider long-term effects. Wishes are irreversible.</p>
+      <p class="wish-note" id="wish-note">Single Use Only. Once made, it cannot be undone or repeated. Consider <span class="nowrap">long-term</span> effects. Wishes are irreversible.</p>
     </div>
   </section>
 
@@ -115,15 +116,22 @@
     </div>
   </dialog>
 
-  <!-- after the wish (.end) only the anonymity line stays; the first screen keeps them all -->
+  <!-- the first screen: the fan-made notice and a Credits link; after the wish (.end) only the anonymity line -->
   <p class="credit" id="credit">
-    <span class="credit-line credit-mfr">Manufacturer: TABI Cat Curiosities · Use at your own risk.</span>
-    <span class="credit-line" id="credit-model">3D model: <a href="https://sketchfab.com/3d-models/one-wish-willow-from-obsession-movie-7269f920284c4bb7a169ee110034d164" target="_blank" rel="noopener">“One Wish Willow from Obsession movie”</a>
-    by <a href="https://sketchfab.com/alyxyuu" target="_blank" rel="noopener">AlyStation</a>
-    on Sketchfab · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> · modified</span>
     <span class="credit-line credit-anon">Your wish is shown anonymously.</span>
-    <span class="credit-line">Unofficial fan-made project. Not affiliated with Obsession or its studio.</span>
+    <span class="credit-line credit-fan">Unofficial fan-made project. Not affiliated with Obsession or its studio.<span id="credit-more"> · <button class="credit-open" id="credit-open" type="button" aria-haspopup="dialog">Credits</button></span></span>
   </p>
+
+  <dialog class="credits" id="credits" aria-labelledby="credits-title">
+    <div class="credits-card">
+      <button class="interest-close" id="credits-close" type="button" aria-label="Close">×</button>
+      <h2 class="credits-title" id="credits-title">Credits</h2>
+      <p class="credits-body">3D model<br><span class="credits-name">“One Wish Willow from Obsession movie”</span><br>
+        by <a href="https://sketchfab.com/alyxyuu" target="_blank" rel="noopener">AlyStation</a>
+        on <a href="https://sketchfab.com/3d-models/one-wish-willow-from-obsession-movie-7269f920284c4bb7a169ee110034d164" target="_blank" rel="noopener">Sketchfab</a></p>
+      <p class="credits-fine">Licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> · modified</p>
+    </div>
+  </dialog>
 
   <noscript><p class="noscript">The One Wish Willow needs JavaScript to be broken.</p></noscript>
 

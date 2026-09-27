@@ -32,14 +32,26 @@ export class WishUI {
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
         e.preventDefault();
-        if (!e.repeat && this._hasText()) this._press(true);
+        // on a phone, Enter / Done puts the keyboard away, and the Hold pill comes up
+        if (this._keyboardLikely()) input.blur();
+        else if (!e.repeat && this._hasText()) this._press(true);
       }
     });
     input.addEventListener('keyup', (e) => {
       if (e.key === 'Enter') this._press(false);
     });
-    input.addEventListener('focus', () => this.root.classList.toggle('compact', this._keyboardLikely()));
-    input.addEventListener('blur', () => this.root.classList.remove('compact'));
+    input.addEventListener('focus', () => {
+      this.root.classList.toggle('compact', this._keyboardLikely());
+      this._sync();
+    });
+    input.addEventListener('blur', () => {
+      this.root.classList.remove('compact');
+      this._sync();
+    });
+    // iOS keeps the keyboard up after a tap outside the field: put it away
+    document.addEventListener('pointerdown', (e) => {
+      if (document.activeElement === input && e.target !== input) input.blur();
+    }, { capture: true });
 
     btn.addEventListener('pointerdown', (e) => {
       if (btn.disabled) return;
@@ -95,7 +107,15 @@ export class WishUI {
     const left = el.maxLength - el.value.length;
     this.count.textContent = left <= 30 ? String(left) : '';
     this.count.classList.toggle('on', left <= 30);
-    const ok = this._hasText();
+    this._sync();
+  }
+
+  // The Hold pill shows once there is a wish, and on a phone only while the
+  // keyboard is down, so it is never left half under the keyboard's edge.
+  _sync() {
+    if (this.done) return;
+    const typing = this._keyboardLikely() && document.activeElement === this.input;
+    const ok = this._hasText() && !typing;
     this.btn.disabled = !ok;
     this.btn.classList.toggle('ready', ok);
     if (!ok) this._press(false);

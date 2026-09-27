@@ -23,7 +23,8 @@ const ui = {
   gateGo: $('gate-go'),
   gateTitle: $('gate-title'),
   credit: $('credit'),
-  creditModel: $('credit-model'),
+  creditMore: $('credit-more'),
+  credits: $('credits'),
   hint: $('hint'),
   ending: $('ending'),
   endMain: $('ending-main'),
@@ -41,6 +42,8 @@ const MAX_FRAME_DT = 0.05; // s: a longer frame (a tab coming back, a stall) cou
 // above ~23 ms (below ~43 fps). Longer frames take equal sub-steps of at most
 // this, so 50 fps and faster still take the single step they always did.
 const MAX_SPRING_STEP = 0.02;
+// the final screens dim the room to 0.4; the 3D halves get this much exposure so they still read
+const FINAL_GAIN = 2.2;
 
 // ------------------------------------------------------------------ state
 
@@ -73,6 +76,9 @@ let time = 0;
 let light = 0;
 let lightTarget = 0;
 let lightRate = 0.3;
+// extra exposure on the 3D halves alone, for the final screens: the room stays as dark
+let halvesGain = 1;
+let halvesGainTarget = 1;
 let flash = 0, flashX = 0, flashY = 0;
 let shake = 0, punch = 0;
 let hitstop = 0;
@@ -756,6 +762,7 @@ function update(dtReal) {
   const dt = dtReal * ts;
 
   light = lerp(light, lightTarget, 1 - Math.exp(-dtReal * lightRate * 3));
+  halvesGain = lerp(halvesGain, halvesGainTarget, 1 - Math.exp(-dtReal * lightRate * 3));
   flash *= Math.exp(-dtReal * 18);
   shake *= Math.exp(-dtReal * (shake > 0.2 ? 8 : 13));
   punch *= Math.exp(-dtReal * 6);
@@ -874,6 +881,7 @@ function render3D() {
   stage.showStick(pose, stickLen(), showStick);
   if (pieces.length) stage.showHalves(pieces.map((p) => p.originPose()), L, pieces.map((p) => p.spin || 0));
   drawBox();
+  stage.setGain(halvesGain);
   stage.render();
   ctx.drawImage(stage.canvas, 0, 0, W, H);
   if (showStick && !opening && frac && st.crack > 0) drawCrack3D();
@@ -1029,6 +1037,7 @@ const wish = new WishUI({
     keepWish(text, snapToSubmit);
     lightTarget = 0.4;
     lightRate = 0.12;
+    halvesGainTarget = FINAL_GAIN;
     wish.release(fxCanvas, () => {
       phase = 'done';
       // set before the credit comes up, so Share measures the one line it keeps
@@ -1081,6 +1090,38 @@ function enter(e) {
   }, 3800 + (use3D ? OPEN_T * 1000 : 0));
 }
 
+// Credits: the model's attribution, in a small dialog over the first screen
+let creditsOpener = null;
+function openCredits() {
+  const d = ui.credits;
+  if (d.open) return;
+  creditsOpener = document.activeElement;
+  try {
+    d.showModal();
+  } catch {
+    d.setAttribute('open', ''); // no <dialog> support: shown, just not modal
+  }
+}
+function closeCredits() {
+  const d = ui.credits;
+  if (!d.open) return;
+  if (typeof d.close === 'function') d.close();
+  else {
+    d.removeAttribute('open');
+    creditsClosed();
+  }
+}
+function creditsClosed() {
+  const el = creditsOpener;
+  creditsOpener = null;
+  if (el && el.isConnected && typeof el.focus === 'function') el.focus({ preventScroll: true });
+}
+$('credit-open').addEventListener('click', openCredits);
+$('credits-close').addEventListener('click', closeCredits);
+// a tap on the dim area around the card
+ui.credits.addEventListener('click', (e) => { if (e.target === ui.credits) closeCredits(); });
+ui.credits.addEventListener('close', creditsClosed);
+
 let creditTimer = 0;
 function showCredit(delay) {
   clearTimeout(creditTimer);
@@ -1096,8 +1137,8 @@ async function boot() {
   } catch (err) {
     console.warn('3D model unavailable, falling back to the painted willow:', err);
     use3D = false;
-    // the model isn't shown, so neither is its credit; the notices stay
-    ui.creditModel.hidden = true;
+    // the model isn't shown, so neither is its credit; the notice stays
+    ui.creditMore.hidden = true;
   }
   const renderer = use3D ? 'webgl' : 'fallback';
   setProps({ renderer });
@@ -1112,6 +1153,7 @@ async function boot() {
     restorePieces();
     lightTarget = 0.4;
     lightRate = 0.16;
+    halvesGainTarget = FINAL_GAIN;
     canvas.setAttribute('aria-label', 'The One Wish Willow lies broken in two.');
     ui.ending.classList.add('revisit');
     ui.credit.classList.add('quick');

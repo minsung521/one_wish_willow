@@ -307,6 +307,11 @@ export class Stage {
     this.H = 1;
   }
 
+  /** Exposure of the model alone (the final screens lift the halves a little). */
+  setGain(g) {
+    this.renderer.toneMappingExposure = g;
+  }
+
   _holder(mesh) {
     const root = new THREE.Group();
     const inner = new THREE.Group();
