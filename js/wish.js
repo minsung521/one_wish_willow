@@ -185,6 +185,17 @@ export class WishUI {
 
 // ---------------------------------------------------------------------------
 
+// What the reader sees as one letter burns as one: a flag, a skin tone, a
+// family joined by ZWJ, a letter with its combining marks. Code points would
+// split these (🇰🇷 into two letter boxes, 👍🏽 into 👍 and a swatch).
+const segmenter = typeof Intl === 'object' && typeof Intl.Segmenter === 'function'
+  ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+  : null;
+
+function graphemes(str) {
+  return segmenter ? Array.from(segmenter.segment(str), (s) => s.segment) : Array.from(str);
+}
+
 class Burn {
   constructor(canvas, textarea) {
     this.canvas = canvas;
@@ -228,7 +239,7 @@ class Burn {
     const range = document.createRange();
     const str = ta.value;
     let i = 0;
-    for (const ch of str) {
+    for (const ch of graphemes(str)) {
       const len = ch.length;
       if (ch.trim()) {
         range.setStart(node, i);
