@@ -9,6 +9,7 @@ import { buzz } from './haptics.js';
 import { loadRecord, saveRecord } from './storage.js';
 import { WishUI } from './wish.js';
 import { ShareToast } from './share.js';
+import { InterestDialog } from './interest.js';
 import { track, setProps } from './analytics.js';
 import { visit } from './visit.js';
 import { keepWish } from './keep.js';
@@ -1001,7 +1002,15 @@ function makeGrain() {
 
 // ------------------------------------------------------------------ wish
 
-const share = new ShareToast({ avoid: [ui.credit] });
+const interest = new InterestDialog({
+  onOpen: () => share.hold(true),
+  onClose: () => share.hold(false),
+});
+const share = new ShareToast({
+  avoid: [ui.credit],
+  // the toast's screens are 'ending' / 'revisit'; the event says 'final' / 'revisit'
+  onOthers: (screen) => interest.open(screen === 'revisit' ? 'revisit' : 'final'),
+});
 
 const wish = new WishUI({
   sound,
