@@ -248,7 +248,8 @@ body {
 #credit-more, .nowrap { white-space: nowrap; }
 .credit-line[hidden], #credit-more[hidden] { display: none; }
 /* the first screen: the fan-made notice and Credits, which opens the model credit */
-.credit:not(.end) .credit-anon { display: none; }
+.credit:not(.end) .credit-anon,
+.credit:not(.end) .credit-contact { display: none; }
 .credit-open {
   /* a small link in the line; the padding only widens what a finger can hit */
   margin: -8px -4px;
@@ -267,8 +268,18 @@ body {
 }
 .credit-open:hover,
 .credit-open:focus-visible { color: var(--ink); }
-/* after the wish: one small, quiet line and nothing else */
-.credit.end .credit-line:not(.credit-anon) { display: none; }
+/* after the wish: two small, quiet lines and nothing else */
+.credit.end .credit-line:not(.credit-anon):not(.credit-contact) { display: none; }
+/* the final screens: the maker's X and email, under the anonymity line */
+.credit.end .credit-contact {
+  margin-top: 2px;
+  font-size: 11px;
+  letter-spacing: normal;
+  color: var(--ink);
+  opacity: 0.35;
+}
+.credit-contact a { color: inherit; text-decoration: underline; text-decoration-color: rgba(220, 217, 200, 0.3); text-underline-offset: 3px; }
+.credit-contact a:hover, .credit-contact a:focus-visible { text-decoration-color: currentColor; outline: none; }
 .credit.end .credit-anon {
   font-size: 11.5px;
   letter-spacing: normal;
