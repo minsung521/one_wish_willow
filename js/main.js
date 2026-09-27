@@ -1115,6 +1115,8 @@ async function boot() {
     canvas.setAttribute('aria-label', 'The One Wish Willow lies broken in two.');
     ui.ending.classList.add('revisit');
     ui.credit.classList.add('quick');
+    // as on the ending: only the anonymity line, set before Share measures it
+    ui.credit.classList.add('end');
     setTimeout(() => {
       ui.endMain.classList.add('caps');
       ui.endMain.textContent = 'Your wish has already been made.';
