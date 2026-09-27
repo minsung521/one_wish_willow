@@ -1,22 +1,13 @@
-/* Korean in the wish: Gowun Dodum (OFL 1.1, assets/fonts/gowun-dodum/OFL.txt),
-   self-hosted and cut to Hangul so it only loads once Korean is typed. The
-   2,350 everyday syllables and the letters (ㅋ, ㅠ) are one file; the other
-   8,822 syllables are a second file that only a rare syllable (똠, 햏) pulls in:
-   the common face is declared last so it is tried first, and when it has no
-   glyph the browser moves on to the rest. Latin stays Nunito. size-adjust
-   keeps Hangul from looking bigger than Nunito next to it. There is no italic
-   face on purpose: the browser slants it to go with Nunito's italic. */
+/* Korean in the wish: NanumSquareRound R, renamed Willow Hangul Round because
+   NAVER reserves the Nanum names for the original (OFL 1.1,
+   assets/fonts/willow-hangul-round/OFL.txt). Self-hosted and cut to Hangul
+   (every syllable and the letters ㄱ–ㅣ, 113 KB) so it only loads once Korean
+   is typed; Latin stays Nunito. size-adjust keeps Hangul from looking bigger
+   than Nunito next to it. There is no italic face on purpose: the browser
+   slants it to go with Nunito's italic. */
 @font-face {
-  font-family: "Gowun Dodum";
-  src: url("../assets/fonts/gowun-dodum/gowun-dodum-ko-rest.woff2") format("woff2");
-  font-weight: 400;
-  font-display: swap;
-  size-adjust: 90%;
-  unicode-range: U+AC00-D7A3;
-}
-@font-face {
-  font-family: "Gowun Dodum";
-  src: url("../assets/fonts/gowun-dodum/gowun-dodum-ko-common.woff2") format("woff2");
+  font-family: "Willow Hangul Round";
+  src: url("../assets/fonts/willow-hangul-round/willow-hangul-round.woff2") format("woff2");
   font-weight: 400;
   font-display: swap;
   size-adjust: 90%;
@@ -31,7 +22,7 @@
   --ink-faint: rgba(220, 217, 200, 0.36);
   --red: #c4241f;
   --ember: #e8b877;
-  --serif: "Nunito", "Gowun Dodum", "Trebuchet MS", "Segoe UI", Arial, sans-serif;
+  --serif: "Nunito", "Willow Hangul Round", "Trebuchet MS", "Segoe UI", Arial, sans-serif;
   --display: "Lilita One", "Arial Rounded MT Bold", Impact, "Arial Black", sans-serif;
   --vvh: 100dvh;
   --vvtop: 0px;
