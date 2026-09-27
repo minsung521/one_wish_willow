@@ -1,5 +1,6 @@
 // Share: a small pill that comes up for a while on the ending and revisit
-// screens, then gets out of the way. It never carries the wish itself, only
+// screens, then gets out of the way. "See others' wishes" rides with it,
+// stacked underneath (js/interest.js). It never carries the wish itself, only
 // a clean link to the site.
 //
 // Phones and tablets open the system share sheet; desktops copy the link.
@@ -37,19 +38,24 @@ const coarse = () => window.matchMedia('(pointer: coarse)').matches;
 
 export class ShareToast {
   /**
-   * @param {{ avoid?: HTMLElement[] }} opts fixed elements at the bottom it must sit above
+   * @param {{ avoid?: HTMLElement[], onOthers?: (screen: string) => void }} opts
+   *   avoid: fixed elements at the bottom it must sit above;
+   *   onOthers: "See others' wishes" was pressed, on this screen
    */
-  constructor({ avoid = [] } = {}) {
+  constructor({ avoid = [], onOthers } = {}) {
     this.root = document.getElementById('share');
     this.btn = document.getElementById('share-btn');
     this.url = document.getElementById('share-url');
+    this.others = document.getElementById('others-btn');
     this.avoid = avoid;
+    this.onOthers = onOthers;
     this.screen = null; // 'ending' | 'revisit'
     this.on = false;
     this.armed = false; // once it has been up, a tap anywhere brings it back
     this.hover = false; // a pointer over it, or a finger on it
     this.focus = false; // keyboard focus inside it
     this.busy = false; // a share or copy is under way
+    this.held = false; // the "See others' wishes" dialog is open
     this.delay = 0;
     this.timer = 0;
     this.url.textContent = SHARE_URL;
@@ -78,6 +84,7 @@ export class ShareToast {
     });
 
     btn.addEventListener('click', () => this._share());
+    this.others.addEventListener('click', () => { if (this.onOthers) this.onOthers(this.screen); });
 
     // Once it has gone, a tap anywhere (or Tab) brings it back. On the tap's
     // release, not its press, so that the same tap can't land on the button.
@@ -97,6 +104,13 @@ export class ShareToast {
     this._settle();
   }
 
+  /** Keep it up while something it opened (the dialog) is in front of it. */
+  hold(on) {
+    this.held = on;
+    if (on && !this.on) this._open();
+    this._settle();
+  }
+
   _close() {
     this.on = false;
     this.root.classList.remove('on');
@@ -105,7 +119,7 @@ export class ShareToast {
   /** (Re)start the countdown to leaving, unless something is holding it up. */
   _settle() {
     clearTimeout(this.timer);
-    if (this.on && !this.hover && !this.focus && !this.busy) this.timer = setTimeout(() => this._close(), LINGER);
+    if (this.on && !this.hover && !this.focus && !this.busy && !this.held) this.timer = setTimeout(() => this._close(), LINGER);
   }
 
   /** Sit just above the credit line (and anything else fixed at the bottom). */

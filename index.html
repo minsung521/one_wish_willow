@@ -93,14 +93,33 @@
   <div class="share" id="share" aria-live="polite">
     <button class="share-btn" id="share-btn" type="button">Share</button>
     <span class="share-url" id="share-url" tabindex="0" hidden></span>
+    <button class="share-btn share-alt" id="others-btn" type="button" aria-haspopup="dialog">See others' wishes</button>
   </div>
+
+  <!-- MIN-158: nothing to see yet; this only asks whether to tell them when there is -->
+  <dialog class="interest" id="interest" aria-labelledby="interest-title">
+    <div class="interest-card">
+      <button class="interest-close" id="interest-close" type="button" aria-label="Close">×</button>
+      <h2 class="interest-title" id="interest-title">Not open yet!</h2>
+      <form class="interest-form" id="interest-form" novalidate>
+        <p class="interest-body">Get an email when it opens — plus how many people liked your wish.</p>
+        <input class="interest-input ph-no-capture ph-mask" id="interest-email" type="email" name="email"
+               placeholder="your@email.com" aria-label="Your email" aria-describedby="interest-fine interest-error"
+               autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" maxlength="254" enterkeyhint="send">
+        <p class="interest-fine" id="interest-fine">Only for this. Deleted after 6 months.</p>
+        <p class="interest-error" id="interest-error" role="alert"></p>
+        <button class="interest-submit" id="interest-submit" type="submit">Notify me</button>
+      </form>
+      <p class="interest-done" id="interest-done" role="status" hidden>Got it! We'll write to you.</p>
+    </div>
+  </dialog>
 
   <p class="credit" id="credit">
     <span class="credit-mfr">Manufacturer: TABI Cat Curiosities · Use at your own risk.</span><br>
     <span id="credit-model">3D model: <a href="https://sketchfab.com/3d-models/one-wish-willow-from-obsession-movie-7269f920284c4bb7a169ee110034d164" target="_blank" rel="noopener">“One Wish Willow from Obsession movie”</a>
     by <a href="https://sketchfab.com/alyxyuu" target="_blank" rel="noopener">AlyStation</a>
     on Sketchfab · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> · modified<br></span>
-    Wishes are kept anonymously.<br>
+    Your wish is shown anonymously.<br>
     Unofficial fan-made project. Not affiliated with Obsession or its studio.
   </p>
 

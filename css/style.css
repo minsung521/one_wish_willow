@@ -551,6 +551,13 @@ body {
   transition: opacity 1.2s ease, transform 1.2s cubic-bezier(.2,.7,.2,1), visibility 0s;
 }
 .share [hidden] { display: none; }
+/* Share on top, "See others' wishes" under it: always stacked, always the same width */
+.share {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
 
 .share-btn,
 .share-url {
@@ -581,6 +588,17 @@ body {
   -webkit-user-select: none;
 }
 .share-btn:hover { border-color: rgba(220, 217, 200, 0.6); }
+/* the second button: outline only, quieter than Share */
+.share-alt {
+  background: transparent;
+  border-color: rgba(220, 217, 200, 0.16);
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-indent: 0.2em;
+}
+.share-alt:hover { border-color: rgba(220, 217, 200, 0.45); color: var(--ink); }
 .share-url {
   padding: 10px 20px;
   border-radius: 22px;
@@ -597,6 +615,157 @@ body {
 .share-btn:focus-visible,
 .share-url:focus-visible { border-color: var(--ink); }
 .share-url::selection { background: rgba(232, 184, 119, 0.28); }
+
+/* ------------------------------------------------------------------ */
+/* "See others' wishes": not open yet, leave an email (MIN-158)        */
+/* ------------------------------------------------------------------ */
+
+/* The dialog itself is only a transparent frame over the visible area (so the
+   card stays clear of an on-screen keyboard); the card is what shows. */
+.interest {
+  position: fixed;
+  top: var(--vvtop);
+  left: 0;
+  width: 100%;
+  max-width: none;
+  height: var(--vvh);
+  max-height: none;
+  margin: 0;
+  padding: 16px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.interest[open] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.interest::backdrop { background: rgba(2, 2, 2, 0.72); }
+
+.interest-card {
+  position: relative;
+  width: min(380px, 100%);
+  margin: auto;
+  padding: 34px 26px 26px;
+  border: 1px solid rgba(220, 217, 200, 0.3);
+  border-radius: 18px;
+  background: #0b0a09;
+  text-align: center;
+  font-family: var(--serif);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
+}
+.interest-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-faint);
+  font-family: var(--serif);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.interest-close:hover,
+.interest-close:focus-visible { color: var(--ink); outline: none; }
+.interest-title {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(28px, 7vw, 34px);
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+}
+.interest-form { margin: 0; }
+.interest-body {
+  margin: 14px 0 22px;
+  text-wrap: balance;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.interest-input {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  padding: 0 18px;
+  border: 1px solid rgba(220, 217, 200, 0.3);
+  border-radius: 999px;
+  background: rgba(220, 217, 200, 0.05);
+  color: var(--ink);
+  caret-color: var(--ember);
+  font-family: var(--serif);
+  font-size: 16px; /* 16px or more, or iOS zooms in on focus */
+  font-weight: 600;
+  text-align: center;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color 0.3s ease;
+}
+.interest-input::placeholder { color: rgba(220, 217, 200, 0.3); }
+.interest-input:focus { border-color: rgba(220, 217, 200, 0.7); }
+.interest-input[aria-invalid="true"] { border-color: var(--red); }
+.interest-fine {
+  margin: 8px 0 0;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  color: var(--ink-faint);
+}
+.interest-error {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.interest-error:empty { display: none; }
+.interest-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  margin: 18px 0 0;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #0b0a09;
+  font-family: var(--serif);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  text-indent: 0.24em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+  outline: none;
+  transition: opacity 0.3s ease;
+}
+.interest-submit:hover { opacity: 0.88; }
+.interest-submit:focus-visible { box-shadow: 0 0 0 2px #0b0a09, 0 0 0 4px var(--ink); }
+.interest-submit:disabled { opacity: 0.5; cursor: default; }
+.interest-done {
+  margin: 16px 0 4px;
+  font-family: var(--display);
+  font-size: 22px;
+  line-height: 1.25;
+  color: var(--ink);
+}
+.interest-done:focus { outline: none; }
+.interest-done[hidden], .interest-form[hidden] { display: none; }
 
 .noscript {
   position: fixed;

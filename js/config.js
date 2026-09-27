@@ -9,10 +9,13 @@ export const POSTHOG_HOST = 'https://us.i.posthog.com';
 // its own commit, so this is set by hand when releasing: the short hash of the
 // commit that changed the app. (Stored wishes get the deployed commit from the
 // server; this value is only their fallback.)
-export const APP_VERSION = 'a247c16';
+export const APP_VERSION = 'd7d65a2';
 
 // Where the wish is kept (api/wish.js).
 export const WISH_API = '/api/wish';
+
+// Where an email from "See others' wishes" is kept (api/interest.js).
+export const INTEREST_API = '/api/interest';
 
 // The box's opening jingle. Set to null to drop the recorded file and use
 // the synthesised jingle in js/audio.js instead (e.g. if the film audio

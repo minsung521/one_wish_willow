@@ -16,7 +16,7 @@ It must be served over HTTP(S), because ES modules don't load from `file://`.
 
 ## The 3D model
 
-The box and the willow come from **["One Wish Willow from Obsession movie"](https://sketchfab.com/3d-models/one-wish-willow-from-obsession-movie-7269f920284c4bb7a169ee110034d164) by [AlyStation](https://sketchfab.com/alyxyuu)**, licensed under [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). The credit is shown on the first screen and after the wish, ending in *· modified* because the model was changed (CC BY 4.0 asks for that), above two notices: *Wishes are kept anonymously.* and *Unofficial fan-made project. Not affiliated with Obsession or its studio.* When the painted fallback is used, the model credit is left out and the notices stay. The original license note is in `assets/willow/license.txt`.
+The box and the willow come from **["One Wish Willow from Obsession movie"](https://sketchfab.com/3d-models/one-wish-willow-from-obsession-movie-7269f920284c4bb7a169ee110034d164) by [AlyStation](https://sketchfab.com/alyxyuu)**, licensed under [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). The credit is shown on the first screen and after the wish, ending in *· modified* because the model was changed (CC BY 4.0 asks for that), above two notices: *Your wish is shown anonymously.* and *Unofficial fan-made project. Not affiliated with Obsession or its studio.* When the painted fallback is used, the model credit is left out and the notices stay. The original license note is in `assets/willow/license.txt`.
 
 What the downloaded model contains, and what was done with it:
 
@@ -61,14 +61,16 @@ At the break, the same pixels are split along a jagged fracture. There are long 
 | `js/haptics.js` | Vibration API, with the iOS 18 switch-tick as a best-effort fallback |
 | `js/wish.js` | Wish prompt, press-and-hold confirm, and letters that burn away one by one |
 | `js/storage.js` | One-time rule: state lives in localStorage and is mirrored to a cookie |
-| `js/share.js` | The Share toast on the ending and revisit screens |
-| `js/config.js` | Constants: PostHog key and host, `APP_VERSION`, the wish API path, the jingle file (`JINGLE_URL`) |
+| `js/share.js` | The Share toast on the ending and revisit screens, with *See others' wishes* under Share |
+| `js/interest.js` | The *Not open yet!* dialog behind *See others' wishes*: the email check and the one request to `/api/interest` |
+| `js/config.js` | Constants: PostHog key and host, `APP_VERSION`, the wish and interest API paths, the jingle file (`JINGLE_URL`) |
 | `js/visit.js` | Runs before the stage: client id, first visit, first entry, device, in-app browser; starts analytics |
 | `js/analytics.js` | `track()` and PostHog's init options; everything is dropped quietly if the SDK is blocked |
 | `js/keep.js` | The one request that carries the wish text, to `/api/wish` |
 | `js/qa.js` | The `?qa=1` overlay and Reset button, loaded only on `?qa=1` (see QA mode) |
 | `api/wish.js` | Vercel Function: validates, rate-limits and stores the wish in Postgres |
-| `db/schema.sql` | The `wishes` table (run once in the Neon SQL editor) |
+| `api/interest.js` | Vercel Function: validates and upserts an email from *See others' wishes* |
+| `db/schema.sql` | The `wishes` and `social_interest` tables (run once in the Neon SQL editor) |
 | `scripts/og/render.mjs` | Renders `og.png` and the PNG icons from the site (not deployed) |
 
 ### Copy and type
@@ -114,6 +116,25 @@ The shared link is always the canonical address plus `?ref=share` (`https://one-
 | Clipboard | `You only get one wish. https://one-wish-willow-eta.vercel.app/?ref=share` |
 
 Once there is a result, one `share_clicked` event is sent with `method` (`native` / `copy_link`, the method that was actually used), `result` (`success` / `cancel` / `error`, where showing the link as text counts as `error`) and `screen` (`ending` / `revisit`).
+
+### See others' wishes (MIN-158)
+A demand check for a social feature that doesn't exist yet: nobody can see anyone's wish. An outline button, *See others' wishes*, sits right under Share in the same toast, on both the ending and the revisit screen, stacked and the same width at every screen size (44 px tall). Share keeps its look; the new button is quieter (fainter outline, softer and smaller type).
+
+Pressing it opens a dialog:
+
+| | |
+|---|---|
+| Title | `Not open yet!` |
+| Body | `Get an email when it opens — plus how many people liked your wish.` |
+| Input | placeholder `your@email.com`, with `Only for this. Deleted after 6 months.` under it |
+| Button | `Notify me` |
+| After | `Got it! We'll write to you.` |
+
+There is no consent checkbox. It closes with ×, Escape or a tap outside the card, and the toast stays up while it is open. The address is checked on the page and again by the server (`something@something.tld`, no spaces, at most 254 characters); a bad one gets *Please check your email address.*, a failed request *Couldn't save it. Please try again.*
+
+`POST /api/interest` (`api/interest.js`) takes `email` and `client_id` (the same id the wish is stored with) and writes to `social_interest` (`db/schema.sql`), a table of its own apart from `wishes`: `email` (trimmed, lower-cased), `client_id` (primary key), `consented_at`. It is an upsert on `client_id`, so asking again replaces the address and the time and there is only ever one row per person. Answers: `201` stored, `400` malformed, `500` server error. The address never goes into an event, storage or a log.
+
+The dialog promises deletion after 6 months; rows older than that (`consented_at < now() - interval '6 months'`) have to be removed.
 
 ### Link previews (MIN-127)
 A shared link has to work as the message on its own, so `<head>` carries the title, description, Open Graph and Twitter Card tags as plain HTML (crawlers don't run JS). `og:url` and the canonical link are always the bare address, even for `?ref=share`. None of this text uses ™: a preview card is seen without the page around it and must not read as the official product.
@@ -180,6 +201,10 @@ PostHog (US Cloud) is loaded by its official snippet in `<head>` and started by 
 | `wish_store_result` | `/api/wish` answers or times out | `status`: `ok` / `error` / `rate_limited` / `timeout`, `latency_ms` |
 | `ending_viewed` | *Wait up to 24 hours…* appears | |
 | `share_clicked` | see Share above | `method`, `result`, `screen` |
+| `social_interest_clicked` | *See others' wishes* pressed (every press) | `screen`: `final` / `revisit` |
+| `email_submitted` | `/api/interest` stored the email (never the address itself) | `screen`: `final` / `revisit` |
+
+For *See others' wishes*, the share of people who pressed it is `social_interest_clicked` over the people who reached one of its two screens: `ending_viewed` (the ending) or `revisit_blocked` (the revisit screen).
 
 Reserved for Wish Score, not sent yet: `score_cta_viewed`, `score_cta_clicked`, `score_requested`, `score_result_shown`, `score_failed`, `score_rate_limited`, `score_feedback`, `score_retry_intent`.
 
