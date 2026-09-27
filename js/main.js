@@ -1031,6 +1031,8 @@ const wish = new WishUI({
     lightRate = 0.12;
     wish.release(fxCanvas, () => {
       phase = 'done';
+      // set before the credit comes up, so Share measures the one line it keeps
+      ui.credit.classList.add('end');
       setTimeout(() => {
         ui.endMain.textContent = 'Wait up to 24 hours for your wish to come true.';
         ui.endMain.classList.add('on');

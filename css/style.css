@@ -231,6 +231,16 @@ body {
 .credit a { color: inherit; text-decoration: none; border-bottom: 1px solid rgba(239, 230, 214, 0.14); }
 .credit a:hover { color: rgba(239, 230, 214, 0.55); }
 .credit[hidden] { display: none; }
+.credit-line { display: block; }
+.credit-line[hidden] { display: none; }
+/* after the wish: one small, quiet line and nothing else */
+.credit.end .credit-line:not(.credit-anon) { display: none; }
+.credit.end .credit-anon {
+  font-size: 11.5px;
+  letter-spacing: normal;
+  color: var(--ink);
+  opacity: 0.35;
+}
 
 @keyframes breathe {
   0%, 100% { opacity: 1; }
