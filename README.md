@@ -76,14 +76,9 @@ At the break, the same pixels are split along a jagged fracture. There are long 
 ### Copy and type
 All on-screen text is taken from the One Wish Willow packaging as reproduced on the model's box texture (which matches the film prop) and from the official product site: "Remove from the box and just make a wish!", "Spark the middle and break in half", "What are you wishing for?", "State your wish clearly", "Single Use Only. Once made, it cannot be undone or repeated.", "Wait up to 24 hours for your wish to come true.", "Only one wish per life per person." The type pairs a chunky rounded display face (Lilita One) for headings, in the spirit of the box's arched title, with Nunito for the fine print, in the package's cream on a dark stage with its red as the one accent.
 
-Korean in the wish (MIN-162) is set in **Gowun Dodum** ([OFL 1.1](assets/fonts/gowun-dodum/OFL.txt)), self-hosted in `assets/fonts/gowun-dodum/` and cut to Hangul only, so Latin stays Nunito and a wish without Korean downloads nothing. It comes after Nunito in `--serif`, with `size-adjust: 90%` so Hangul doesn't look bigger than the Latin beside it, and `font-display: swap`. It has no italic, so the browser slants it to match the italic field (and the burn, which draws with the same font). The subset is split in two, both declared with the full Hangul range:
+Korean in the wish (MIN-162) is set in **NanumSquareRound** Regular, self-hosted in `assets/fonts/willow-hangul-round/` and cut to Hangul only (all 11,172 syllables and the letters ㄱ–ㅣ, 113 KB), so Latin stays Nunito and a wish without Korean downloads nothing. NAVER releases the Nanum fonts under OFL 1.1 but reserves the Nanum names, so the cut-down copy is renamed **Willow Hangul Round** inside the file and in CSS ([license](assets/fonts/willow-hangul-round/OFL.txt)). It comes after Nunito in `--serif`, with `size-adjust: 90%` so Hangul doesn't look bigger than the Latin beside it, and `font-display: swap`. It has no italic, so the browser slants it to match the italic field (and the burn, which draws with the same font).
 
-| File | Holds | Size |
-|---|---|---|
-| `gowun-dodum-ko-common.woff2` | the 2,350 everyday syllables (KS X 1001) and the letters ㄱ–ㅣ (ㅋㅋ, ㅠㅠ) | 149 KB |
-| `gowun-dodum-ko-rest.woff2` | the other 8,822 syllables (똠, 햏, …) | 304 KB |
-
-The common file is declared last, so browsers try it first; only a syllable it lacks pulls in the second file. To rebuild them from `GowunDodum-Regular.ttf` (google/fonts, `ofl/gowundodum`), run `pyftsubset` with `--flavor=woff2 --no-hinting --desubroutinize --layout-features='*'` and the code points of each set (the common set is the KS X 1001 syllables: those CP949 encodes with a lead byte 0xB0–0xC8 and a trail byte 0xA1–0xFE).
+To rebuild it from `NanumSquareRoundR.ttf`: `pyftsubset NanumSquareRoundR.ttf --unicodes="U+3131-318E,U+AC00-D7A3" --flavor=woff2 --no-hinting --desubroutinize --layout-features='*'`, then rename the family in the `name` table (fontTools) and keep NAVER's copyright line.
 
 The wish field has `spellcheck`, `autocorrect`, `autocomplete` and `autocapitalize` off, so keyboards have less reason to underline what is being typed. The underline under the syllable still being composed is the keyboard's own and can't be styled.
 
