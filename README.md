@@ -16,7 +16,7 @@ It must be served over HTTP(S), because ES modules don't load from `file://`.
 
 ## The 3D model
 
-The box and the willow come from **["One Wish Willow from Obsession movie"](https://sketchfab.com/3d-models/one-wish-willow-from-obsession-movie-7269f920284c4bb7a169ee110034d164) by [AlyStation](https://sketchfab.com/alyxyuu)**, licensed under [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). The credit is shown on the first screen, ending in *· modified* because the model was changed (CC BY 4.0 asks for that), above two notices: *Your wish is shown anonymously.* and *Unofficial fan-made project. Not affiliated with Obsession or its studio.* After the wish (the ending and the revisit screen), only *Your wish is shown anonymously.* stays, as one small, quiet line under Share. When the painted fallback is used, the model credit is left out and the notices stay. The original license note is in `assets/willow/license.txt`.
+The box and the willow come from **["One Wish Willow from Obsession movie"](https://sketchfab.com/3d-models/one-wish-willow-from-obsession-movie-7269f920284c4bb7a169ee110034d164) by [AlyStation](https://sketchfab.com/alyxyuu)**, licensed under [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). The first screen keeps one small line at its foot, *Unofficial fan-made project. Not affiliated with Obsession or its studio.*, with a **Credits** link beside it. Credits opens a small dialog with the model's attribution: the title, AlyStation, a link to it on Sketchfab, a link to CC BY 4.0, and *modified*, because the model was changed (CC BY 4.0 asks for that). It closes with ×, Escape or a tap outside the card. After the wish (the ending and the revisit screen), only *Your wish is shown anonymously.* stays, as one small, quiet line under Share. When the painted fallback is used, the Credits link is left out and the notice stays. The original license note is in `assets/willow/license.txt`.
 
 What the downloaded model contains, and what was done with it:
 
@@ -167,6 +167,7 @@ After changing the image, clear the KakaoTalk cache in the Kakao developers shar
 ### Controls
 - **Pointer or touch:** press on the stick and pull across it (up or down) to snap it.
 - **Keyboard:** after the first screen, focus the stick and hold <kbd>Space</kbd>. On the wish screen, hold <kbd>Enter</kbd> or the button to confirm.
+- **The wish screen on a phone** (`pointer: coarse`): the **Hold to make your wish** button sits at the foot of the screen, under the broken halves and above the fine print, in the page's own flow (the safe area is kept clear below it). It fades in once the wish has at least one character and the field is not focused, so it never shows half hidden by the on-screen keyboard. Enter / Done or a tap outside the field puts the keyboard away. While the keyboard is up, the prompt and the field sit a little above the middle of the space left over it. Holding fills the line under the label, for 1.5 s. On a desktop the button shows as soon as there is text, and holding Enter in the field still confirms.
 
 ## Keeping the wish (MIN-121)
 

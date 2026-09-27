@@ -243,12 +243,30 @@ body {
   transition: opacity 1.8s ease;
 }
 .credit.on { opacity: 1; pointer-events: auto; }
-.credit-mfr { text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700; }
-.credit a { color: inherit; text-decoration: none; border-bottom: 1px solid rgba(239, 230, 214, 0.14); }
-.credit a:hover { color: rgba(239, 230, 214, 0.55); }
 .credit[hidden] { display: none; }
-.credit-line { display: block; }
-.credit-line[hidden] { display: none; }
+.credit-line { display: block; text-wrap: balance; }
+#credit-more, .nowrap { white-space: nowrap; }
+.credit-line[hidden], #credit-more[hidden] { display: none; }
+/* the first screen: the fan-made notice and Credits, which opens the model credit */
+.credit:not(.end) .credit-anon { display: none; }
+.credit-open {
+  /* a small link in the line; the padding only widens what a finger can hit */
+  margin: -8px -4px;
+  padding: 8px 4px;
+  border: 0;
+  background: transparent;
+  color: rgba(220, 217, 200, 0.5);
+  font: inherit;
+  letter-spacing: inherit;
+  text-decoration: underline;
+  text-decoration-color: rgba(220, 217, 200, 0.24);
+  text-underline-offset: 3px;
+  cursor: pointer;
+  touch-action: manipulation;
+  outline: none;
+}
+.credit-open:hover,
+.credit-open:focus-visible { color: var(--ink); }
 /* after the wish: one small, quiet line and nothing else */
 .credit.end .credit-line:not(.credit-anon) { display: none; }
 .credit.end .credit-anon {
@@ -298,7 +316,7 @@ body {
   top: var(--vvtop);
   height: var(--vvh);
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   justify-content: center;
   padding: 0 16px;
   z-index: 20;
@@ -308,12 +326,26 @@ body {
 .wish.shown { visibility: visible; }
 .wish.shown .wish-inner { pointer-events: auto; }
 
+/* The prompt and the field at the top, the Hold pill and the fine print at the
+   foot: the broken halves lie in between, so the pill never covers them. */
 .wish-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   width: min(620px, 100%);
-  margin-top: clamp(64px, calc(var(--vvh) * 0.2), 220px);
+  height: 100%;
+  padding-top: clamp(64px, calc(var(--vvh) * 0.2), 220px);
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
   text-align: center;
 }
-.wish.compact .wish-inner { margin-top: clamp(40px, calc(var(--vvh) * 0.1), 120px); }
+.wish-inner > * { flex-shrink: 0; }
+.wish-top { width: 100%; }
+/* With the keyboard up, the prompt and the field sit in the middle of what is
+   left above it (a touch high), and the hidden pill and fine print leave the flow. */
+.wish.compact .wish-inner { padding-top: 24px; padding-bottom: calc(24px + var(--vvh) * 0.06); }
+.wish.compact .wish-top { margin: auto 0; }
+.wish.compact .hold,
+.wish.compact .wish-note { position: absolute; visibility: hidden; }
 
 .wish-kicker {
   margin: 0 0 14px;
@@ -410,13 +442,15 @@ body {
 }
 .wish-count.on { opacity: 1; }
 
+/* The Hold button, at the foot of the screen under the broken halves. It only
+   shows once there is a wish and, on a phone, the keyboard is down (js/wish.js). */
 .hold {
   position: relative;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  margin: clamp(34px, 6vh, 54px) auto 0;
+  margin: auto 0 0;
   padding: 14px 22px;
   border: 0;
   background: transparent;
@@ -430,7 +464,7 @@ body {
   cursor: pointer;
   opacity: 0;
   transform: translateY(4px);
-  transition: opacity 0.9s ease, transform 0.9s ease, color 0.4s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease, color 0.4s ease;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
@@ -438,7 +472,7 @@ body {
   outline: none;
 }
 .hold:disabled { cursor: default; pointer-events: none; }
-.hold.ready { opacity: 1; transform: none; }
+.hold.ready { opacity: 1; transform: none; transition: opacity 0.45s ease, transform 0.45s ease, color 0.4s ease; }
 .hold:focus-visible .hold-label { text-decoration: underline; text-underline-offset: 6px; text-decoration-color: rgba(239,230,214,0.3); }
 .hold.pressing { color: var(--ink); }
 
@@ -460,13 +494,9 @@ body {
 }
 
 .wish-note {
-  /* the fine print sits at the foot of the screen, out of the way of the wish */
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: max(12px, env(safe-area-inset-bottom));
-  margin: 0;
-  padding: 0 16px;
+  /* the fine print, at the foot of the screen under the Hold pill */
+  max-width: 300px;
+  margin: clamp(18px, 3.5vh, 32px) auto 0;
   text-wrap: balance;
   font-size: 10.5px;
   font-weight: 600;
@@ -648,7 +678,8 @@ body {
 
 /* The dialog itself is only a transparent frame over the visible area (so the
    card stays clear of an on-screen keyboard); the card is what shows. */
-.interest {
+.interest,
+.credits {
   position: fixed;
   top: var(--vvtop);
   left: 0;
@@ -664,14 +695,17 @@ body {
   overflow-y: auto;
   overscroll-behavior: contain;
 }
-.interest[open] {
+.interest[open],
+.credits[open] {
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.interest::backdrop { background: rgba(2, 2, 2, 0.72); }
+.interest::backdrop,
+.credits::backdrop { background: rgba(2, 2, 2, 0.72); }
 
-.interest-card {
+.interest-card,
+.credits-card {
   position: relative;
   width: min(380px, 100%);
   margin: auto;
@@ -792,6 +826,34 @@ body {
 }
 .interest-done:focus { outline: none; }
 .interest-done[hidden], .interest-form[hidden] { display: none; }
+
+/* Credits: the model's CC BY 4.0 attribution, behind the link on the first screen */
+.credits-card { width: min(340px, 100%); padding: 30px 24px 24px; }
+.credits-title {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+}
+.credits-body {
+  margin: 14px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+.credits-name { color: var(--ink); }
+.credits-fine {
+  margin: 12px 0 0;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  color: var(--ink-faint);
+}
+.credits a { color: var(--ink); text-decoration: underline; text-decoration-color: rgba(220, 217, 200, 0.3); text-underline-offset: 3px; }
+.credits a:hover, .credits a:focus-visible { text-decoration-color: var(--ink); outline: none; }
 
 .noscript {
   position: fixed;
