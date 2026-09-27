@@ -59,6 +59,7 @@
 
   <section class="wish" id="wish" aria-hidden="true">
     <div class="wish-inner">
+      <div class="wish-top">
       <p class="wish-kicker">State your wish clearly.</p>
       <h1 class="wish-q" id="wish-q">What are you wishing for?</h1>
       <div class="wish-field" id="wish-field">
@@ -76,10 +77,11 @@
         <span class="wish-line" aria-hidden="true"></span>
         <span class="wish-count" id="wish-count" aria-hidden="true"></span>
       </div>
-      <!-- under the broken halves, at the foot of the screen; the hold fills the pill itself -->
+      </div>
+      <!-- under the broken halves, at the foot of the screen -->
       <button class="hold" id="wish-hold" type="button" disabled>
-        <span class="hold-fill" id="hold-fill" aria-hidden="true"></span>
         <span class="hold-label">Hold to make your wish</span>
+        <span class="hold-track" aria-hidden="true"><span class="hold-fill" id="hold-fill"></span></span>
       </button>
       <p class="wish-note" id="wish-note">Single Use Only. Once made, it cannot be undone or repeated. Consider <span class="nowrap">long-term</span> effects. Wishes are irreversible.</p>
     </div>

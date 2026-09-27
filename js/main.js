@@ -43,7 +43,7 @@ const MAX_FRAME_DT = 0.05; // s: a longer frame (a tab coming back, a stall) cou
 // this, so 50 fps and faster still take the single step they always did.
 const MAX_SPRING_STEP = 0.02;
 // the final screens dim the room to 0.4; the 3D halves get this much exposure so they still read
-const FINAL_GAIN = 2.2;
+const FINAL_GAIN = 1.6;
 
 // ------------------------------------------------------------------ state
 

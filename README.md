@@ -167,7 +167,7 @@ After changing the image, clear the KakaoTalk cache in the Kakao developers shar
 ### Controls
 - **Pointer or touch:** press on the stick and pull across it (up or down) to snap it.
 - **Keyboard:** after the first screen, focus the stick and hold <kbd>Space</kbd>. On the wish screen, hold <kbd>Enter</kbd> or the button to confirm.
-- **The wish screen on a phone** (`pointer: coarse`): the **Hold to make your wish** pill sits at the foot of the screen, under the broken halves and above the fine print, in the page's own flow (the safe area is kept clear below it). It fades in once the wish has at least one character and the field is not focused, so it never shows half hidden by the on-screen keyboard. Enter / Done or a tap outside the field puts the keyboard away. Holding fills the pill from the left; it takes the same 1.5 s as before. On a desktop the pill shows as soon as there is text, and holding Enter in the field still confirms.
+- **The wish screen on a phone** (`pointer: coarse`): the **Hold to make your wish** button sits at the foot of the screen, under the broken halves and above the fine print, in the page's own flow (the safe area is kept clear below it). It fades in once the wish has at least one character and the field is not focused, so it never shows half hidden by the on-screen keyboard. Enter / Done or a tap outside the field puts the keyboard away. While the keyboard is up, the prompt and the field sit a little above the middle of the space left over it. Holding fills the line under the label, for 1.5 s. On a desktop the button shows as soon as there is text, and holding Enter in the field still confirms.
 
 ## Keeping the wish (MIN-121)
 

@@ -339,7 +339,13 @@ body {
   text-align: center;
 }
 .wish-inner > * { flex-shrink: 0; }
-.wish.compact .wish-inner { padding-top: clamp(40px, calc(var(--vvh) * 0.1), 120px); }
+.wish-top { width: 100%; }
+/* With the keyboard up, the prompt and the field sit in the middle of what is
+   left above it (a touch high), and the hidden pill and fine print leave the flow. */
+.wish.compact .wish-inner { padding-top: 24px; padding-bottom: calc(24px + var(--vvh) * 0.06); }
+.wish.compact .wish-top { margin: auto 0; }
+.wish.compact .hold,
+.wish.compact .wish-note { position: absolute; visibility: hidden; }
 
 .wish-kicker {
   margin: 0 0 14px;
@@ -436,32 +442,29 @@ body {
 }
 .wish-count.on { opacity: 1; }
 
-/* The same outlined pill as Share. Holding fills it from the left; it only
-   shows once there is a wish and the keyboard is down (see js/wish.js). */
+/* The Hold button, at the foot of the screen under the broken halves. It only
+   shows once there is a wish and, on a phone, the keyboard is down (js/wish.js). */
 .hold {
   position: relative;
-  display: flex;
+  display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  min-height: 44px;
+  gap: 10px;
   margin: auto 0 0;
-  padding: 0 24px;
-  border: 1px solid rgba(220, 217, 200, 0.3);
-  border-radius: 999px;
-  overflow: hidden;
-  isolation: isolate;
-  background: rgba(3, 3, 3, 0.62);
-  color: var(--ink);
+  padding: 14px 22px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
   font-family: var(--serif);
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.24em;
-  text-indent: 0.24em;
+  letter-spacing: 0.26em;
+  text-indent: 0.26em;
   text-transform: uppercase;
-  white-space: nowrap;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.2s ease, border-color 0.4s ease;
+  transform: translateY(4px);
+  transition: opacity 0.2s ease, transform 0.2s ease, color 0.4s ease;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
@@ -469,26 +472,31 @@ body {
   outline: none;
 }
 .hold:disabled { cursor: default; pointer-events: none; }
-.hold.ready { opacity: 1; transition: opacity 0.45s ease, border-color 0.4s ease; }
-.hold:hover,
-.hold:focus-visible { border-color: rgba(220, 217, 200, 0.6); }
-.hold.pressing { border-color: rgba(232, 184, 119, 0.75); }
-.hold-label { position: relative; }
+.hold.ready { opacity: 1; transform: none; transition: opacity 0.45s ease, transform 0.45s ease, color 0.4s ease; }
+.hold:focus-visible .hold-label { text-decoration: underline; text-underline-offset: 6px; text-decoration-color: rgba(239,230,214,0.3); }
+.hold.pressing { color: var(--ink); }
 
+.hold-track {
+  position: relative;
+  display: block;
+  width: 180px;
+  height: 1px;
+  background: rgba(239, 230, 214, 0.14);
+  overflow: hidden;
+}
 .hold-fill {
   position: absolute;
   inset: 0;
-  z-index: -1;
-  background: linear-gradient(90deg, rgba(232, 184, 119, 0.14), rgba(232, 184, 119, 0.34));
-  box-shadow: inset -2px 0 0 rgba(232, 184, 119, 0.85);
+  background: linear-gradient(90deg, rgba(232,184,119,0.4), var(--ember), rgba(232,184,119,0.4));
   transform: scaleX(0);
-  transform-origin: 0 50%;
+  transform-origin: 50% 50%;
+  box-shadow: 0 0 10px rgba(232, 184, 119, 0.8);
 }
 
 .wish-note {
   /* the fine print, at the foot of the screen under the Hold pill */
   max-width: 300px;
-  margin: 14px auto 0;
+  margin: clamp(18px, 3.5vh, 32px) auto 0;
   text-wrap: balance;
   font-size: 10.5px;
   font-weight: 600;
