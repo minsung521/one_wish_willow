@@ -8,10 +8,14 @@ const HOLD_MS = 1500;
 const INK = [239, 230, 214];
 
 export class WishUI {
-  constructor({ sound, onConfirm, onStart }) {
+  constructor({ sound, onConfirm, onStart, onShown, onFocus }) {
     this.sound = sound;
     this.onConfirm = onConfirm;
     this.onStart = onStart;
+    this.onShown = onShown;
+    this.onFocus = onFocus;
+    this.promptVisible = false;
+    this.focused = false;
     this.root = document.getElementById('wish');
     this.input = document.getElementById('wish-input');
     this.count = document.getElementById('wish-count');
@@ -41,6 +45,10 @@ export class WishUI {
       if (e.key === 'Enter') this._press(false);
     });
     input.addEventListener('focus', () => {
+      if (!this.focused) {
+        this.focused = true;
+        if (this.onFocus) this.onFocus();
+      }
       this.root.classList.toggle('compact', this._keyboardLikely());
       this._sync();
     });
@@ -121,16 +129,42 @@ export class WishUI {
     if (!ok) this._press(false);
   }
 
+  // The field is on screen. A hidden tab doesn't count: wait until it is seen.
+  _fieldShown() {
+    if (this.promptVisible) return;
+    const mark = () => {
+      if (this.promptVisible || document.hidden) return;
+      this.promptVisible = true;
+      document.removeEventListener('visibilitychange', mark);
+      if (this.onShown) this.onShown();
+    };
+    if (document.hidden) document.addEventListener('visibilitychange', mark);
+    else mark();
+  }
+
+  /** Where the person got to, for page_hidden. Never the text itself. */
+  progress() {
+    return {
+      wish_prompt_visible: this.promptVisible,
+      wish_focused: this.focused,
+      wish_has_text: this._hasText(),
+    };
+  }
+
   show(instant = false) {
     const r = this.root;
     r.classList.add('shown');
     r.setAttribute('aria-hidden', 'false');
     if (instant) {
       r.classList.add('q-on', 'field-on');
+      this._fieldShown();
       return;
     }
     requestAnimationFrame(() => r.classList.add('q-on'));
-    setTimeout(() => r.classList.add('field-on'), 1500);
+    setTimeout(() => {
+      r.classList.add('field-on');
+      this._fieldShown();
+    }, 1500);
     setTimeout(() => {
       if (!this._keyboardLikely()) this.input.focus({ preventScroll: true });
     }, 2300);

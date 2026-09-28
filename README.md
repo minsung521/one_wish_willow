@@ -203,6 +203,8 @@ PostHog (US Cloud) is loaded by its official snippet in `<head>` and started by 
 | `box_tapped` | the box is opened (the jingle) | `ms_since_ready` |
 | `branch_grab_started` | the stick is first grabbed | |
 | `branch_snapped` | the snap | `grab_attempts`, `ms_since_box_tap`, `days_since_first_visit` |
+| `wish_prompt_shown` | the wish field is on screen (a hidden tab waits until it is seen) | `ms_since_snap` |
+| `wish_input_focused` | the field first gets focus (a tap on a phone) | `ms_since_snap` |
 | `wish_input_started` | the first character typed | |
 | `wish_submitted` | the 1.5 s hold completes | `char_length`, `snap_to_submit_ms` (never the text) |
 | `wish_store_result` | `/api/wish` answers or times out | `status`: `ok` / `error` / `rate_limited` / `timeout`, `latency_ms` |
@@ -210,6 +212,9 @@ PostHog (US Cloud) is loaded by its official snippet in `<head>` and started by 
 | `share_clicked` | see Share above | `method`, `result`, `screen` |
 | `social_interest_clicked` | *See others' wishes* pressed (every press) | `screen`: `final` / `revisit` |
 | `email_submitted` | `/api/interest` stored the email (never the address itself) | `screen`: `final` / `revisit` |
+| `page_hidden` | the page is hidden or closed, once per hide (sent by beacon) | `stage` (the phase: `gate` / `opening` / `intro` / `idle` / `broken` / `wish` / `releasing` / `done` / `already`), `via`: `visibilitychange` / `pagehide`, `ms_since_snap` (null before the snap); in `wish` also `wish_prompt_visible`, `wish_focused`, `wish_has_text` (a boolean, never the text) |
+
+A drop-off after the snap (MIN-175) splits into: gone before `wish_prompt_shown`; shown but never `wish_input_focused`; focused but no `wish_input_started`; typed but no `wish_submitted`. `page_hidden` with `stage: wish` says where each one left.
 
 For *See others' wishes*, the share of people who pressed it is `social_interest_clicked` over the people who reached one of its two screens: `ending_viewed` (the ending) or `revisit_blocked` (the revisit screen).
 
