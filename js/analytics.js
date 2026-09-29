@@ -11,11 +11,12 @@ import { POSTHOG_KEY, POSTHOG_HOST } from './config.js';
 /**
  * @param {string} event event name, e.g. 'share_clicked'
  * @param {Record<string, unknown>} [props] event properties
+ * @param {object} [options] PostHog capture options, e.g. { transport: 'sendBeacon' }
  */
-export function track(event, props) {
+export function track(event, props, options) {
   try {
     const ph = window.posthog;
-    if (ph && typeof ph.capture === 'function') ph.capture(event, props);
+    if (ph && typeof ph.capture === 'function') ph.capture(event, props, options);
   } catch {
     /* ignore */
   }

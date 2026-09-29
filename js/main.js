@@ -1020,8 +1020,16 @@ const share = new ShareToast({
   onOthers: (screen) => interest.open(screen === 'revisit' ? 'revisit' : 'final'),
 });
 
+// wall-clock, since the snap may have been on an earlier visit
+const msSinceSnap = () =>
+  record && (record.state === 'broken' || record.state === 'wished') && record.at
+    ? Math.max(0, Date.now() - record.at)
+    : null;
+
 const wish = new WishUI({
   sound,
+  onShown: () => track('wish_prompt_shown', { ms_since_snap: msSinceSnap() }),
+  onFocus: () => track('wish_input_focused', { ms_since_snap: msSinceSnap() }),
   onStart: () => track('wish_input_started'),
   onConfirm: (text) => {
     // the snap may have been on an earlier visit, so wall-clock time
@@ -1056,6 +1064,23 @@ const wish = new WishUI({
     });
   },
 });
+
+// Leaving (tab switch, app switch, close): the stage the person was at, so a
+// drop-off after the snap can be placed. Once per hide; beacon so it survives
+// the page going away. visibilitychange and pagehide both fire on close.
+let hiddenSent = false;
+function pageHidden(via) {
+  if (hiddenSent) return;
+  hiddenSent = true;
+  const props = { stage: phase, via, ms_since_snap: msSinceSnap() };
+  if (phase === 'wish') Object.assign(props, wish.progress());
+  track('page_hidden', props, { transport: 'sendBeacon' });
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) pageHidden('visibilitychange');
+  else hiddenSent = false;
+});
+window.addEventListener('pagehide', () => pageHidden('pagehide'));
 
 // ------------------------------------------------------------------ boot
 
