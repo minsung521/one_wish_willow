@@ -28,9 +28,18 @@ const el = {
   boot: $('boot'), closed: $('closed'), login: $('login'), review: $('review'), logout: $('logout'),
   form: $('login-form'), password: $('password'), loginError: $('login-error'), loginSubmit: $('login-submit'),
   tabs: $('tabs'), title: $('list-title'), refresh: $('refresh'), status: $('list-status'), cards: $('cards'), more: $('more'),
+  topError: $('top-error'),
 };
 
-const state = { status: 'pending', next: null, loading: false, generation: 0, counts: null };
+// generation: every list request (a newer one wins). view: the list on screen,
+// renewed by a tab change, a refresh or a login; a card from an older view is
+// no longer on screen. session: renewed by every login screen. moves/inflight:
+// state changes started / still on their way, so counts from a list request
+// that crossed one aren't trusted.
+const state = {
+  status: 'pending', next: null, loading: false, counts: null,
+  generation: 0, view: 0, session: 0, moves: 0, inflight: 0,
+};
 const dateFormat = new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' });
 
 class HttpError extends Error {
@@ -83,6 +92,9 @@ function handleAuth(err) {
 
 function toLogin(message = '') {
   state.generation++;
+  state.view++;
+  state.session++;
+  el.topError.textContent = '';
   show('login');
   el.loginError.textContent = message;
   el.password.value = '';
@@ -120,12 +132,28 @@ el.form.addEventListener('submit', async (e) => {
   }
 });
 
+// Logged out only once the server has cleared the cookie. Until then the
+// session is still good (a reload would show this page again), so say so and
+// leave the button to try again.
 el.logout.addEventListener('click', async () => {
+  if (el.logout.disabled) return;
   el.logout.disabled = true;
+  el.topError.textContent = '';
   try {
     await api('DELETE', API.session);
-  } catch {
-    /* the cookie expires on its own; show the login either way */
+  } catch (err) {
+    el.logout.disabled = false;
+    if (err instanceof HttpError && err.status === 404 && err.body && err.body.status === 'closed') {
+      show('closed');
+      return;
+    }
+    const s = err instanceof HttpError ? err.status : 0;
+    const why = s === 403 ? '요청 출처가 올바르지 않아 거부되었습니다. 이 사이트 주소에서'
+      : s >= 500 ? '서버 오류가 났습니다.'
+      : s ? `응답 ${s}.`
+      : '연결을 확인하고';
+    el.topError.textContent = `로그아웃하지 못했습니다. ${why} 다시 시도하세요. 세션은 아직 유효합니다.`;
+    return;
   }
   el.logout.disabled = false;
   el.cards.replaceChildren();
@@ -156,26 +184,37 @@ el.tabs.addEventListener('click', (e) => {
 el.refresh.addEventListener('click', () => load(true));
 el.more.addEventListener('click', () => load(false));
 
+function listUrl(before) {
+  const url = new URL(API.wishes, location.origin);
+  url.searchParams.set('status', state.status);
+  if (before) url.searchParams.set('before', String(before));
+  return url.pathname + url.search;
+}
+
+/** Counts from a list that no state change crossed (none started or open since). */
+function takeCounts(counts, moves) {
+  if (state.inflight === 0 && state.moves === moves) setCounts(counts);
+}
+
 async function load(fresh) {
   if (state.loading && !fresh) return;
   const generation = ++state.generation;
+  const moves = state.moves;
   state.loading = true;
   if (fresh) {
+    state.view++;
     state.next = null;
     el.cards.replaceChildren();
   }
   el.more.disabled = true;
   el.refresh.disabled = true;
   el.status.textContent = '불러오는 중…';
-  const url = new URL(API.wishes, location.origin);
-  url.searchParams.set('status', state.status);
-  if (!fresh && state.next) url.searchParams.set('before', String(state.next));
   try {
-    const data = await api('GET', url.pathname + url.search);
+    const data = await api('GET', listUrl(fresh ? null : state.next));
     if (generation !== state.generation) return;
     for (const w of data.wishes) el.cards.append(card(w));
     state.next = data.next;
-    setCounts(data.counts);
+    takeCounts(data.counts, moves);
     el.status.textContent = el.cards.children.length ? '' : `${LABEL[state.status]} 상태의 소원이 없습니다.`;
     el.more.hidden = state.next === null;
   } catch (err) {
@@ -188,6 +227,18 @@ async function load(fresh) {
       el.more.disabled = false;
       el.refresh.disabled = false;
     }
+  }
+}
+
+/** Only the tab counts, from the server, for the list still on screen. */
+async function refreshCounts() {
+  const { view, session } = state;
+  const moves = state.moves;
+  try {
+    const data = await api('GET', listUrl(null));
+    if (view === state.view && session === state.session) takeCounts(data.counts, moves);
+  } catch {
+    /* the next list load brings them */
   }
 }
 
@@ -259,26 +310,53 @@ async function moderate(li, w, to) {
   for (const b of buttons) b.disabled = true;
   const error = li.querySelector('.error');
   error.textContent = '';
+  const { view, session } = state;
+  state.moves++;
+  state.inflight++;
+  let data = null;
+  let err = null;
   try {
-    const data = await api('PATCH', API.wishes, { id: w.id, from: w.status, status: to });
-    removeCard(li, `#${w.id} ${data.unchanged ? '이미 처리되어 있습니다' : DONE[to]}.`, w.status, data.wish.status);
-  } catch (err) {
-    if (handleAuth(err)) return;
-    if (err instanceof HttpError && err.status === 409 && err.body && err.body.wish) {
-      const now = err.body.wish.status;
-      removeCard(li, `#${w.id}은(는) 이미 다른 곳에서 ${LABEL[now]} 처리되었습니다.`, w.status, now);
-      return;
-    }
-    if (err instanceof HttpError && err.status === 404) {
-      removeCard(li, `#${w.id}을(를) 찾을 수 없습니다.`, w.status, null);
-      return;
-    }
-    error.textContent = err instanceof HttpError && err.status === 403
-      ? '요청 출처가 올바르지 않습니다.'
-      : '처리하지 못했습니다. 다시 시도하세요.';
-    delete li.dataset.busy;
-    for (const b of buttons) b.disabled = false;
+    data = await api('PATCH', API.wishes, { id: w.id, from: w.status, status: to });
+  } catch (e) {
+    err = e;
+  } finally {
+    state.inflight--;
   }
+
+  // logged out (or in again) since: this answer belongs to no screen now
+  if (session !== state.session) return;
+  if (err && handleAuth(err)) return;
+
+  // The list was reloaded (another tab, Refresh) while this was on its way: its
+  // card is gone and the counts on screen came from the server. Don't touch
+  // them; if the wish did move, ask the server again for this tab.
+  if (view !== state.view || !li.isConnected) {
+    const moved = (data && !data.unchanged) || (err instanceof HttpError && err.status === 409);
+    if (moved) {
+      if (el.cards.querySelector(`.card[data-id="${w.id}"]`)) load(true);
+      else refreshCounts();
+    }
+    return;
+  }
+
+  if (data) {
+    removeCard(li, `#${w.id} ${data.unchanged ? '이미 처리되어 있습니다' : DONE[to]}.`, w.status, data.wish.status);
+    return;
+  }
+  if (err instanceof HttpError && err.status === 409 && err.body && err.body.wish) {
+    const now = err.body.wish.status;
+    removeCard(li, `#${w.id}은(는) 이미 다른 곳에서 ${LABEL[now]} 처리되었습니다.`, w.status, now);
+    return;
+  }
+  if (err instanceof HttpError && err.status === 404) {
+    removeCard(li, `#${w.id}을(를) 찾을 수 없습니다.`, w.status, null);
+    return;
+  }
+  error.textContent = err instanceof HttpError && err.status === 403
+    ? '요청 출처가 올바르지 않습니다.'
+    : '처리하지 못했습니다. 다시 시도하세요.';
+  delete li.dataset.busy;
+  for (const b of buttons) b.disabled = false;
 }
 
 /** The wish left this tab's status: take its card away and say what happened. */

@@ -178,6 +178,8 @@ To switch the review page on for an environment (Preview first):
 2. Vercel → Settings → Environment Variables: add `ADMIN_PASSWORD_HASH` and `ADMIN_SESSION_SECRET` (at least 32 characters) with the printed values, only for the environments that should have it. Redeploy.
 3. Open `/admin/`. Remove either variable to switch it off again.
 
+On the page, logging out says so only once the server has cleared the cookie; if that request fails, the page stays, says the session is still valid, and the button can be pressed again. An approve/reject/hide answer that arrives after the list was reloaded (another tab, Refresh) or after logging out doesn't touch the list on screen: if the wish did move, the page asks the server again for the current tab (or only its counts).
+
 To try the feed on a preview: `SOCIAL_ENABLED=true` in that Preview's environment variables, and `SOCIAL_ENABLED = true` in `js/config.js` on a preview-only branch. Rolling back in production is the reverse: the page's switch off (commit, deploy) and/or the variable removed.
 
 **Local checks** (no Vercel, no Neon): `scripts/dev/server.mjs` serves the site and runs `api/` against a plain Postgres, swapping the Neon driver for `pg`.

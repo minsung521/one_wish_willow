@@ -403,11 +403,111 @@ async function adminFlow(device, tag) {
   const srow = (await db.query('select moderation_status s from wishes where id = $1', [sid])).rows[0];
   check(`[${tag}] admin: stale approve did not override`, srow.s === 'rejected');
 
-  // logout
+  // ---- late answers: a state change still on its way when the list changes
+  const dbCounts = async () => {
+    const c = { pending: 0, approved: 0, rejected: 0, hidden: 0 };
+    for (const r of (await db.query('select moderation_status s, count(*)::int n from wishes group by 1')).rows) c[r.s] = r.n;
+    return c;
+  };
+  const tabCounts = () => page.evaluate(() => Object.fromEntries(
+    [...document.querySelectorAll('[data-count]')].map((e) => [e.dataset.count, Number(e.textContent)])));
+  const countsMatch = async () => {
+    const [a, b] = [await tabCounts(), await dbCounts()];
+    return ['pending', 'approved', 'rejected', 'hidden'].every((k) => a[k] === b[k]);
+  };
+  const settle = async () => {
+    await page.waitForFunction(() => !document.getElementById('refresh').disabled);
+    await page.waitForTimeout(600);
+    await page.waitForFunction(() => !document.getElementById('refresh').disabled);
+  };
+  const onlyStatus = (s) => page.evaluate((st) => [...document.querySelectorAll('.card')].every((c) => c.dataset.status === st), s);
+  const slow = (r) => (r.request().method() === 'PATCH'
+    ? new Promise((ok) => setTimeout(ok, 1500)).then(() => r.continue())
+    : r.continue());
+  await page.route('**/api/admin/wishes', slow);
+
+  // A: approve, then switch tab before the answer
+  await page.click('#tabs button[data-status="pending"]');
+  await settle();
+  const xa = Number(await page.locator('.card').first().getAttribute('data-id'));
+  await page.locator('.card').first().locator('button', { hasText: '승인' }).click();
+  await page.click('#tabs button[data-status="approved"]');
+  await page.waitForTimeout(2200);
+  await settle();
+  check(`[${tag}] late answer after a tab change: counts equal the server's`, await countsMatch(),
+    JSON.stringify(await tabCounts()));
+  check(`[${tag}] late answer after a tab change: approved tab untouched (no pending cards, no message)`,
+    (await onlyStatus('approved')) && !(await page.textContent('#list-status')).includes(`#${xa}`)
+    && (await page.textContent('#list-title')) === '승인');
+  check(`[${tag}] late answer after a tab change: the approval itself went through`,
+    (await db.query('select moderation_status s from wishes where id = $1', [xa])).rows[0].s === 'approved');
+
+  // B: approve, then Refresh before the answer (the refreshed list still has the card)
+  await page.click('#tabs button[data-status="pending"]');
+  await settle();
+  const xb = Number(await page.locator('.card').first().getAttribute('data-id'));
+  await page.locator('.card').first().locator('button', { hasText: '승인' }).click();
+  await page.click('#refresh');
+  await page.waitForTimeout(2200);
+  await settle();
+  check(`[${tag}] late answer after Refresh: the list is asked again, the moved card is gone`,
+    !(await page.$(`.card[data-id="${xb}"]`)) && (await onlyStatus('pending')));
+  check(`[${tag}] late answer after Refresh: counts equal the server's`, await countsMatch(), JSON.stringify(await tabCounts()));
+
+  // C: approve, then log out before the answer
+  await settle();
+  const xc = Number(await page.locator('.card').first().getAttribute('data-id'));
+  const patchStatus = page.waitForResponse((r) => r.request().method() === 'PATCH').then((r) => r.status());
+  await page.locator('.card').first().locator('button', { hasText: '승인' }).click();
   await page.click('#logout');
   await page.waitForSelector('#login:not([hidden])');
+  await page.waitForTimeout(2200);
+  check(`[${tag}] late answer after logout: the login screen stays as it was`,
+    (await page.isVisible('#login')) && !(await page.isVisible('#review'))
+    && (await page.locator('.card').count()) === 0 && (await page.textContent('#login-error')) === '로그아웃했습니다.');
+  // the held request reaches the server after the cookie is gone: refused (401), the wish stays pending
+  const lateStatus = await patchStatus;
+  const lateRow = (await db.query('select moderation_status s from wishes where id = $1', [xc])).rows[0].s;
+  check(`[${tag}] late answer after logout: server and DB agree (401 -> still pending, or 200 -> approved)`,
+    (lateStatus === 401 && lateRow === 'pending') || (lateStatus === 200 && lateRow === 'approved'), `${lateStatus} -> ${lateRow}`);
+  await page.unroute('**/api/admin/wishes', slow);
+
+  // ---- logout that fails: no success message, the session is still good
+  await page.fill('#password', ADMIN_TEST_PASSWORD);
+  await page.click('#login-submit');
+  await page.waitForSelector('.card');
+  const failures = [
+    ['offline', (r) => r.abort('internetdisconnected')],
+    ['403', (r) => r.fulfill({ status: 403, contentType: 'application/json', body: '{"status":"forbidden"}' })],
+    ['500', (r) => r.fulfill({ status: 500, contentType: 'application/json', body: '{"status":"error"}' })],
+  ];
+  for (const [name, answer] of failures) {
+    const handler = (r) => (r.request().method() === 'DELETE' ? answer(r) : r.continue());
+    await page.route('**/api/admin/session', handler);
+    await page.click('#logout');
+    await page.waitForFunction(() => document.getElementById('top-error').textContent.length > 0);
+    const msg = await page.textContent('#top-error');
+    check(`[${tag}] logout ${name}: error and retry, still on the review page`,
+      msg.includes('로그아웃하지 못했습니다') && msg.includes('세션은 아직 유효') && (await page.isVisible('#review'))
+      && !(await page.isVisible('#login')) && (await page.isEnabled('#logout')), msg);
+    if (name === 'offline') await shot(page, `${tag}-15-admin-logout-failed`);
+    await page.unroute('**/api/admin/session', handler);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#review:not([hidden]), #login:not([hidden])');
+    check(`[${tag}] logout ${name}: after a reload the session is still valid (review page again)`,
+      await page.isVisible('#review'));
+  }
+
+  // logout that works
+  await page.click('#logout');
+  await page.waitForSelector('#login:not([hidden])');
+  check(`[${tag}] logout ok: "로그아웃했습니다", no error`,
+    (await page.textContent('#login-error')) === '로그아웃했습니다.' && (await page.textContent('#top-error')) === '');
   const after = await page.evaluate(async () => (await fetch('/api/admin/wishes')).status);
   check(`[${tag}] admin: after logout the list API answers 401`, after === 401);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#review:not([hidden]), #login:not([hidden])');
+  check(`[${tag}] logout ok: after a reload, the login screen`, (await page.isVisible('#login')) && !(await page.isVisible('#review')));
   check(`[${tag}] admin: no analytics or third-party requests`, thirdParty.length === 0, thirdParty.join(','));
   check(`[${tag}] admin: no page errors`, errors.length === 0, errors.join(' | '));
   await ctx.close();

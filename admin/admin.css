@@ -85,6 +85,7 @@ input[type="password"]:focus { outline: none; border-color: var(--ink); }
 .notice:empty { min-height: 0; margin: 0; }
 .error { margin: 0; color: #f0a39c; font-weight: 600; font-size: 14px; }
 .error:empty { display: none; }
+.top-error { width: min(720px, 100%); margin: 12px auto 0; padding: 0 16px; }
 
 .btn {
   min-height: 44px;

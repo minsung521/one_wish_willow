@@ -44,7 +44,22 @@ PASS  [m] admin: hidden wish is gone from the public feed at once
 PASS  [m] admin: DB after hide: hidden, approved_at NULL, reviewed_at set
 PASS  [m] admin: stale card -> says it was already handled
 PASS  [m] admin: stale approve did not override
+PASS  [m] late answer after a tab change: counts equal the server's  ({"pending":22,"approved":4,"hidden":1,"rejected":2})
+PASS  [m] late answer after a tab change: approved tab untouched (no pending cards, no message)
+PASS  [m] late answer after a tab change: the approval itself went through
+PASS  [m] late answer after Refresh: the list is asked again, the moved card is gone
+PASS  [m] late answer after Refresh: counts equal the server's  ({"pending":21,"approved":5,"hidden":1,"rejected":2})
+PASS  [m] late answer after logout: the login screen stays as it was
+PASS  [m] late answer after logout: server and DB agree (401 -> still pending, or 200 -> approved)  (401 -> pending)
+PASS  [m] logout offline: error and retry, still on the review page  (로그아웃하지 못했습니다. 연결을 확인하고 다시 시도하세요. 세션은 아직 유효합니다.)
+PASS  [m] logout offline: after a reload the session is still valid (review page again)
+PASS  [m] logout 403: error and retry, still on the review page  (로그아웃하지 못했습니다. 요청 출처가 올바르지 않아 거부되었습니다. 이 사이트 주소에서 다시 시도하세요. 세션은 아직 유효합니다.)
+PASS  [m] logout 403: after a reload the session is still valid (review page again)
+PASS  [m] logout 500: error and retry, still on the review page  (로그아웃하지 못했습니다. 서버 오류가 났습니다. 다시 시도하세요. 세션은 아직 유효합니다.)
+PASS  [m] logout 500: after a reload the session is still valid (review page again)
+PASS  [m] logout ok: "로그아웃했습니다", no error
 PASS  [m] admin: after logout the list API answers 401
+PASS  [m] logout ok: after a reload, the login screen
 PASS  [m] admin: no analytics or third-party requests
 PASS  [m] admin: no page errors
 PASS  [d] wish screen shows "See others' wishes"
@@ -90,8 +105,23 @@ PASS  [d] admin: hidden wish is gone from the public feed at once
 PASS  [d] admin: DB after hide: hidden, approved_at NULL, reviewed_at set
 PASS  [d] admin: stale card -> says it was already handled
 PASS  [d] admin: stale approve did not override
+PASS  [d] late answer after a tab change: counts equal the server's  ({"pending":22,"approved":4,"hidden":1,"rejected":2})
+PASS  [d] late answer after a tab change: approved tab untouched (no pending cards, no message)
+PASS  [d] late answer after a tab change: the approval itself went through
+PASS  [d] late answer after Refresh: the list is asked again, the moved card is gone
+PASS  [d] late answer after Refresh: counts equal the server's  ({"pending":21,"approved":5,"hidden":1,"rejected":2})
+PASS  [d] late answer after logout: the login screen stays as it was
+PASS  [d] late answer after logout: server and DB agree (401 -> still pending, or 200 -> approved)  (401 -> pending)
+PASS  [d] logout offline: error and retry, still on the review page  (로그아웃하지 못했습니다. 연결을 확인하고 다시 시도하세요. 세션은 아직 유효합니다.)
+PASS  [d] logout offline: after a reload the session is still valid (review page again)
+PASS  [d] logout 403: error and retry, still on the review page  (로그아웃하지 못했습니다. 요청 출처가 올바르지 않아 거부되었습니다. 이 사이트 주소에서 다시 시도하세요. 세션은 아직 유효합니다.)
+PASS  [d] logout 403: after a reload the session is still valid (review page again)
+PASS  [d] logout 500: error and retry, still on the review page  (로그아웃하지 못했습니다. 서버 오류가 났습니다. 다시 시도하세요. 세션은 아직 유효합니다.)
+PASS  [d] logout 500: after a reload the session is still valid (review page again)
+PASS  [d] logout ok: "로그아웃했습니다", no error
 PASS  [d] admin: after logout the list API answers 401
+PASS  [d] logout ok: after a reload, the login screen
 PASS  [d] admin: no analytics or third-party requests
 PASS  [d] admin: no page errors
 
-95/95 passed
+125/125 passed
