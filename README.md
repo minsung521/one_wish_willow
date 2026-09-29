@@ -63,13 +63,20 @@ At the break, the same pixels are split along a jagged fracture. There are long 
 | `js/storage.js` | One-time rule: state lives in localStorage and is mirrored to a cookie |
 | `js/share.js` | The Share toast on the ending and revisit screens, with *See others' wishes* under Share |
 | `js/interest.js` | The *Not open yet!* dialog behind *See others' wishes*: the email check and the one request to `/api/interest` |
-| `js/config.js` | Constants: PostHog key and host, `APP_VERSION`, the wish and interest API paths, the jingle file (`JINGLE_URL`) |
+| `js/config.js` | Constants: PostHog key and host, `APP_VERSION`, the wish, interest and social API paths, `SOCIAL_ENABLED`, the jingle file (`JINGLE_URL`) |
 | `js/visit.js` | Runs before the stage: client id, first visit, first entry, device, in-app browser; starts analytics |
 | `js/analytics.js` | `track()` and PostHog's init options; everything is dropped quietly if the SDK is blocked |
 | `js/keep.js` | The one request that carries the wish text, to `/api/wish` |
 | `js/qa.js` | The `?qa=1` overlay and Reset button, loaded only on `?qa=1` (see QA mode) |
 | `api/wish.js` | Vercel Function: validates, rate-limits and stores the wish in Postgres |
 | `api/interest.js` | Vercel Function: validates and upserts an email from *See others' wishes* |
+| `js/social.js` | The others' wishes feed behind `SOCIAL_ENABLED` (MIN-122) |
+| `api/social.js` | Vercel Function: the public feed, approved wishes only |
+| `api/admin/session.js`, `api/admin/wishes.js`, `api/_lib/admin.js` | The maker's login and review API (MIN-183) |
+| `admin/` | The maker's review page, `/admin/` |
+| `vercel.json` | `noindex`, no framing, no caching for `/admin` |
+| `scripts/admin/hash-password.mjs` | Makes `ADMIN_PASSWORD_HASH` (and `ADMIN_SESSION_SECRET`); run locally, not deployed |
+| `scripts/dev/` | A local server for the page and `api/` on a plain Postgres, and the feed/review checks (not deployed) |
 | `db/schema.sql` | The `wishes` and `social_interest` tables (run once in the Neon SQL editor) |
 | `scripts/og/render.mjs` | Renders `og.png` and the PNG icons from the site (not deployed) |
 
@@ -142,6 +149,51 @@ There is no consent checkbox. It closes with ×, Escape or a tap outside the car
 
 The dialog promises deletion after 6 months; rows older than that (`consented_at < now() - interval '6 months'`) have to be removed.
 
+### Others' wishes and the review page (MIN-122, MIN-123, MIN-183)
+
+Behind two switches, both off: `SOCIAL_ENABLED` in `js/config.js` (the page) and the `SOCIAL_ENABLED=true` environment variable (the server). With the page's switch off, everything above stays as it is: the *Not open yet!* email dialog, and no link on the wish screen.
+
+With it on:
+- *See others' wishes* under Share (ending and revisit) opens the feed instead of the email dialog, and the event is `social_feed_opened` (`screen`: `final` / `revisit` / `wish`) instead of `social_interest_clicked`.
+- The wish screen gets a small *See others' wishes* link under the fine print, for someone who snapped the stick but hasn't made the wish. The feed covers the screen; Back or Escape closes it and the field still holds what they were writing. It goes away once the wish is made.
+- The feed is one scrolled column: each wish set like the visitor's own (italic, cream, centred, line breaks kept), a small ember between them, 20 at a time with *See more wishes*. Loading, *No wishes to show yet*, and *Couldn't load wishes* with *Try again* (also for a failed second page). Wishes are set as text, never HTML, and the list carries `ph-no-capture ph-mask`. It covers the stage completely, so the model (and its credit) isn't on screen while it is open; its footer keeps the anonymity and fan-made lines.
+
+**Moderation.** Every wish is stored `pending` (`wishes.moderation_status`, `db/2026-09-29-social-approval.sql`). Only the maker, one by one, makes a wish public; nothing is approved automatically. The public feed returns `moderation_status = 'approved' and approved_at is not null` only.
+
+| API | |
+|---|---|
+| `GET /api/social?before=<id>` | `{ wishes: [{ id, text }], next: id \| null }`, newest first, 20 a page. `400` bad cursor, `404 {status:'closed'}` server switch off, `503` no database. `no-store`. |
+| `GET /api/admin/session` | `200 { authenticated, expires_at }` or `401` |
+| `POST /api/admin/session` `{ password }` | `200` + session cookie; `401 invalid_password`; `429 rate_limited` (`Retry-After`); `403` another origin; `400` not JSON |
+| `DELETE /api/admin/session` | `200`, cookie cleared (logout); `403` another origin |
+| `GET /api/admin/wishes?status=pending\|approved\|rejected\|hidden&before=<id>` | `{ wishes: [{ id, text, status, created_at, reviewed_at, approved_at }], next, counts }`, newest first, 20 a page; `401` without a session |
+| `PATCH /api/admin/wishes` `{ id, from, status }` | `pending → approved\|rejected`, `approved → hidden`, `rejected\|hidden → approved`. `200 { wish }`; `200 { wish, unchanged: true }` when it already has that status (a double tap); `409 { status: 'conflict', wish }` when it moved elsewhere first; `400 invalid_transition`; `404`; `401`; `403` another origin |
+
+Every admin route answers `404 {status:'closed'}` unless `ADMIN_PASSWORD_HASH` and `ADMIN_SESSION_SECRET` are both set. Approving sets `approved_at` and `reviewed_at` to `now()`; rejecting and hiding set `reviewed_at = now()` and `approved_at = NULL`. The move is one conditional `UPDATE … WHERE id = $1 AND moderation_status = $from`, so two taps or two tabs can't both apply it, and a hidden wish is gone from the next `GET /api/social`.
+
+**Admin login.** One password, never stored: `ADMIN_PASSWORD_HASH` is its scrypt hash (N=32768). A good login sets `__Host-oww_admin`, an HMAC-signed 12-hour session, `HttpOnly; Secure; SameSite=Strict; Path=/`. Its key is derived from `ADMIN_SESSION_SECRET` and the hash, so changing either signs every session out. `POST`/`PATCH`/`DELETE` must carry the site's own `Origin` (or `Sec-Fetch-Site: same-origin`) and a JSON body. Five wrong passwords from one address (thirty from all) in 15 minutes answer `429` for the rest of the window; this is kept in the function's memory, so it holds per instance, and the password's length is what really stops guessing. Bodies, passwords, cookies and wish text are never logged, only error codes; the review page loads no analytics.
+
+To switch the review page on for an environment (Preview first):
+1. On your own computer: `node scripts/admin/hash-password.mjs --generate --secret`. Keep the password it shows in a password manager.
+2. Vercel → Settings → Environment Variables: add `ADMIN_PASSWORD_HASH` and `ADMIN_SESSION_SECRET` (at least 32 characters) with the printed values, only for the environments that should have it. Redeploy.
+3. Open `/admin/`. Remove either variable to switch it off again.
+
+To try the feed on a preview: `SOCIAL_ENABLED=true` in that Preview's environment variables, and `SOCIAL_ENABLED = true` in `js/config.js` on a preview-only branch. Rolling back in production is the reverse: the page's switch off (commit, deploy) and/or the variable removed.
+
+**Local checks** (no Vercel, no Neon): `scripts/dev/server.mjs` serves the site and runs `api/` against a plain Postgres, swapping the Neon driver for `pg`.
+
+```bash
+npm --prefix scripts/dev install
+createdb oww && psql -d oww -f db/schema.sql
+export LOCAL_PG=1 DATABASE_URL=postgres://localhost/oww SOCIAL_ENABLED=true IP_HASH_SECRET=local-only-secret
+eval "$(printf 'a-local-test-password' | node scripts/admin/hash-password.mjs --secret | sed 's/^/export /')"
+node scripts/dev/server.mjs 8080 &
+ADMIN_TEST_PASSWORD=a-local-test-password node scripts/dev/api-test.mjs http://localhost:8080
+ADMIN_TEST_PASSWORD=a-local-test-password node scripts/dev/flow-test.mjs http://localhost:8080 scripts/dev/checks
+```
+
+Both refuse a `DATABASE_URL` that isn't on localhost (they empty `wishes`). `flow-test.mjs` turns `SOCIAL_ENABLED` on only inside its browsers. `scripts/dev/checks/` keeps the last run's results and screenshots.
+
 ### Link previews (MIN-127)
 A shared link has to work as the message on its own, so `<head>` carries the title, description, Open Graph and Twitter Card tags as plain HTML (crawlers don't run JS). `og:url` and the canonical link are always the bare address, even for `?ref=share`. None of this text uses ™: a preview card is seen without the page around it and must not read as the official product.
 
@@ -213,6 +265,7 @@ PostHog (US Cloud) is loaded by its official snippet in `<head>` and started by 
 | `share_clicked` | see Share above | `method`, `result`, `screen` |
 | `social_interest_clicked` | *See others' wishes* pressed (every press) | `screen`: `final` / `revisit` |
 | `email_submitted` | `/api/interest` stored the email (never the address itself) | `screen`: `final` / `revisit` |
+| `social_feed_opened` | the feed opened (only with `SOCIAL_ENABLED` on; replaces `social_interest_clicked`) | `screen`: `final` / `revisit` / `wish` |
 | `page_hidden` | the page is hidden or closed, once per hide (sent by beacon) | `stage` (the phase: `gate` / `opening` / `intro` / `idle` / `broken` / `wish` / `releasing` / `done` / `already`), `via`: `visibilitychange` / `pagehide`, `ms_since_snap` (null before the snap); in `wish` also `wish_prompt_visible`, `wish_focused`, `wish_has_text` (a boolean, never the text), `wish_hold_early_releases` |
 
 For MIN-177, a typed-but-not-sent drop-off with `wish_hold_early_releases: 0` never tried the Hold pill (didn't know how); one with several let go again and again (found it tedious).
