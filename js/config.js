@@ -17,6 +17,11 @@ export const WISH_API = '/api/wish';
 // Where an email from "See others' wishes" is kept (api/interest.js).
 export const INTEREST_API = '/api/interest';
 
+// MIN-122 preview switch. Keep off until moderation (MIN-123) and the
+// server-side SOCIAL_ENABLED gate are ready for public access.
+export const SOCIAL_ENABLED = false;
+export const SOCIAL_API = '/api/social';
+
 // The box's opening jingle. Set to null to drop the recorded file and use
 // the synthesised jingle in js/audio.js instead (e.g. if the film audio
 // has to come down). Swap the path to use a replacement file.

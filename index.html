@@ -84,6 +84,7 @@
         <span class="hold-track" aria-hidden="true"><span class="hold-fill" id="hold-fill"></span></span>
       </button>
       <p class="wish-note" id="wish-note">Single Use Only. Once made, it cannot be undone or repeated. Consider <span class="nowrap">long-term</span> effects. Wishes are irreversible.</p>
+      <button class="wish-others" id="wish-others" type="button" hidden>See others' wishes</button>
     </div>
   </section>
 
@@ -115,6 +116,21 @@
         <button class="interest-submit" id="interest-submit" type="submit">Notify me</button>
       </form>
       <p class="interest-done" id="interest-done" role="status" hidden>Got it! We'll write to you.</p>
+    </div>
+  </dialog>
+
+  <dialog class="social" id="social" aria-labelledby="social-title">
+    <div class="social-shell">
+      <header class="social-header">
+        <button class="social-back" id="social-back" type="button">← Back</button>
+        <p class="social-brand">One Wish Willow<sup>™</sup></p>
+      </header>
+      <h2 id="social-title">What did they wish for?</h2>
+      <p class="social-intro">One branch. One wish. A glimpse at what others chose.</p>
+      <p class="social-status" id="social-status" role="status"></p>
+      <ol class="social-list" id="social-list"></ol>
+      <button class="social-more" id="social-more" type="button" hidden>See more wishes</button>
+      <p class="social-footer">Wishes are shown anonymously. Unofficial fan-made project.</p>
     </div>
   </dialog>
 

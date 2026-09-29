@@ -522,6 +522,21 @@ body {
 /* with the keyboard up the foot of the screen is the keyboard's edge: keep it clear */
 .wish.compact .wish-note { opacity: 0; }
 
+.wish-others {
+  margin: 12px auto 0;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: rgba(220, 217, 200, 0.68);
+  font: 600 12px Nunito, sans-serif;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+.wish-others[hidden] { display: none; }
+.wish-others:hover, .wish-others:focus-visible { color: var(--ink); }
+.wish.compact .wish-others { visibility: hidden; }
+
 .wish.leaving .wish-kicker,
 .wish.leaving .wish-q,
 .wish.leaving .wish-line,
@@ -531,9 +546,51 @@ body {
   opacity: 0 !important;
   transition: opacity 1.4s ease;
 }
+.wish.leaving .wish-others { display: none; }
 .wish.leaving #wish-input { color: transparent; caret-color: transparent; }
 .wish.leaving #wish-input::placeholder { color: transparent; }
 
+/* A scrollable cabinet of anonymous wishes, rather than one prominent card. */
+.social {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: #080706;
+  color: var(--ink);
+  font-family: Nunito, sans-serif;
+}
+.social::backdrop { background: #030303; }
+.social-shell { width: min(620px, 100%); min-height: 100%; margin: auto; padding: 24px 22px max(36px, env(safe-area-inset-bottom)); }
+.social-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.social-brand { margin: 0; font: 18px 'Lilita One', sans-serif; }
+.social-brand sup { font: 9px Nunito, sans-serif; vertical-align: super; }
+.social-back, .social-more {
+  border: 1px solid rgba(220, 217, 200, 0.4);
+  border-radius: 100px;
+  padding: 10px 16px;
+  background: transparent;
+  color: var(--ink);
+  font: 700 12px Nunito, sans-serif;
+  cursor: pointer;
+}
+.social-back:hover, .social-more:hover { border-color: var(--ink); }
+.social h2 { margin: clamp(42px, 8vh, 78px) 0 8px; font: clamp(30px, 7vw, 44px)/1.1 'Lilita One', sans-serif; }
+.social-intro { margin: 0 0 34px; color: rgba(220, 217, 200, 0.58); font-size: 13px; line-height: 1.6; }
+.social-status { min-height: 1.5em; color: rgba(220, 217, 200, 0.7); font-size: 13px; }
+.social-list { list-style: none; margin: 0; padding: 0; }
+.social-wish { padding: 24px 2px; border-top: 1px solid rgba(220, 217, 200, 0.18); }
+.social-wish p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: clamp(16px, 4vw, 19px); line-height: 1.65; }
+.social-more { display: block; margin: 20px auto 0; }
+.social-more[hidden] { display: none; }
+.social-footer { margin: 58px 0 0; text-align: center; color: rgba(220, 217, 200, 0.4); font-size: 11px; }
 /* ------------------------------------------------------------------ */
 /* Ending                                                              */
 /* ------------------------------------------------------------------ */
