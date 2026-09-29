@@ -119,18 +119,20 @@
     </div>
   </dialog>
 
+  <!-- MIN-122: others' wishes, only those the maker approved (api/social.js). Behind SOCIAL_ENABLED in js/config.js -->
   <dialog class="social" id="social" aria-labelledby="social-title">
     <div class="social-shell">
       <header class="social-header">
-        <button class="social-back" id="social-back" type="button">← Back</button>
+        <button class="social-back" id="social-back" type="button" autofocus>← Back</button>
         <p class="social-brand">One Wish Willow<sup>™</sup></p>
       </header>
+      <p class="social-kicker">One branch. One wish.</p>
       <h2 id="social-title">What did they wish for?</h2>
-      <p class="social-intro">One branch. One wish. A glimpse at what others chose.</p>
-      <p class="social-status" id="social-status" role="status"></p>
-      <ol class="social-list" id="social-list"></ol>
+      <p class="social-intro">A glimpse at what others chose.</p>
+      <ol class="social-list ph-no-capture ph-mask" id="social-list" aria-label="Wishes"></ol>
+      <p class="social-status" id="social-status" role="status" aria-live="polite"></p>
       <button class="social-more" id="social-more" type="button" hidden>See more wishes</button>
-      <p class="social-footer">Wishes are shown anonymously. Unofficial fan-made project.</p>
+      <p class="social-footer"><span>Wishes are shown anonymously.</span><span>Unofficial fan-made project. Not affiliated with Obsession or its studio.</span></p>
     </div>
   </dialog>
 

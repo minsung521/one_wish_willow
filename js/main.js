@@ -1016,9 +1016,10 @@ const interest = new InterestDialog({
   onOpen: () => share.hold(true),
   onClose: () => share.hold(false),
 });
+// from the wish screen there is no Share toast to keep up
 const social = new SocialFeed({
-  onOpen: () => share.hold(true),
-  onClose: () => share.hold(false),
+  onOpen: (screen) => { if (screen !== 'wish') share.hold(true); },
+  onClose: (screen) => { if (screen !== 'wish') share.hold(false); },
 });
 const share = new ShareToast({
   avoid: [ui.credit],

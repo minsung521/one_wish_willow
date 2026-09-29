@@ -1,0 +1,193 @@
+/* The review page: the site's dark stage and cream ink, laid out for a phone
+   first (one column, big buttons), roomier on a desktop. */
+:root {
+  --bg: #030303;
+  --card: #0d0c0a;
+  --ink: #dcd9c8;
+  --ink-soft: rgba(220, 217, 200, 0.66);
+  --ink-faint: rgba(220, 217, 200, 0.4);
+  --line: rgba(220, 217, 200, 0.18);
+  --red: #c4241f;
+  --ember: #e8b877;
+  --ok: #8fbf8a;
+  --serif: "Nunito", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", Arial, sans-serif;
+  --display: "Lilita One", "Arial Rounded MT Bold", Impact, sans-serif;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.5 var(--serif);
+  -webkit-font-smoothing: antialiased;
+}
+[hidden] { display: none !important; }
+a { color: var(--ink); }
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: max(12px, env(safe-area-inset-top)) 16px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.brand { margin: 0; font: 20px var(--display); letter-spacing: 0.01em; }
+.top-links { display: flex; gap: 6px; align-items: center; }
+.top-links a,
+.link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font: 600 14px var(--serif);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+main {
+  width: min(720px, 100%);
+  margin: 0 auto;
+  padding: 16px 16px max(40px, env(safe-area-inset-bottom));
+}
+h1 { margin: 0; font: 26px/1.2 var(--display); letter-spacing: 0.01em; }
+h1:focus { outline: none; }
+
+.panel {
+  margin-top: 32px;
+  padding: 24px 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
+}
+.panel p { color: var(--ink-soft); }
+#login-form { display: grid; gap: 10px; margin-top: 16px; }
+label { font-weight: 700; font-size: 14px; }
+input[type="password"] {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid rgba(220, 217, 200, 0.3);
+  border-radius: 12px;
+  background: #050505;
+  color: var(--ink);
+  font: 16px var(--serif); /* 16px keeps iOS from zooming in */
+}
+input[type="password"]:focus { outline: none; border-color: var(--ink); }
+
+.notice { margin: 12px 0; color: var(--ink-soft); min-height: 1.5em; }
+.notice:empty { min-height: 0; margin: 0; }
+.error { margin: 0; color: #f0a39c; font-weight: 600; font-size: 14px; }
+.error:empty { display: none; }
+
+.btn {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid rgba(220, 217, 200, 0.32);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: 700 14px var(--serif);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.btn:hover { border-color: rgba(220, 217, 200, 0.7); }
+.btn:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn.primary { background: var(--ink); border-color: var(--ink); color: #0b0a09; }
+.btn.approve { background: rgba(143, 191, 138, 0.14); border-color: rgba(143, 191, 138, 0.6); color: #cfe8cb; }
+.btn.reject { background: rgba(196, 36, 31, 0.12); border-color: rgba(196, 36, 31, 0.6); color: #f0c2bf; }
+
+.guide {
+  margin: 4px 0 14px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  font-size: 14px;
+}
+.guide summary { min-height: 28px; font-weight: 700; cursor: pointer; }
+.guide ul { margin: 8px 0 0; padding-left: 18px; color: var(--ink-soft); }
+.guide li { margin: 4px 0; }
+.guide b { color: var(--ink); }
+.guide-fine { margin: 8px 0 0; color: var(--ink-faint); font-size: 12.5px; }
+
+/* the status tabs stay at the top while the list scrolls */
+.tabs {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin: 0 -16px;
+  padding: 10px 16px;
+  background: linear-gradient(var(--bg) 80%, rgba(3, 3, 3, 0));
+}
+.tabs button {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink-soft);
+  font: 700 14px var(--serif);
+  cursor: pointer;
+}
+.tabs button[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); background: rgba(220, 217, 200, 0.08); }
+.tabs button:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+.tabs .n { display: block; font-size: 12px; font-weight: 600; color: var(--ink-faint); }
+
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0 4px; }
+
+.cards { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 12px; }
+.card {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: 13px;
+  font-weight: 600;
+}
+.badge {
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+.badge.approved { border-color: rgba(143, 191, 138, 0.6); color: #cfe8cb; }
+.badge.rejected, .badge.hidden { border-color: rgba(196, 36, 31, 0.6); color: #f0c2bf; }
+.sub { color: var(--ink-faint); }
+.text {
+  margin: 10px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+.flags { margin: 8px 0 0; color: var(--ember); font-size: 13px; font-weight: 700; }
+.actions { display: flex; gap: 8px; margin-top: 14px; }
+.actions .btn { flex: 1; }
+.card .error { margin-top: 8px; }
+.more { display: block; margin: 16px auto 0; }
+
+@media (min-width: 640px) {
+  .actions { justify-content: flex-end; }
+  .actions .btn { flex: 0 0 auto; min-width: 120px; }
+}
