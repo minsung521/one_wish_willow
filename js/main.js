@@ -1031,6 +1031,7 @@ const wish = new WishUI({
   onShown: () => track('wish_prompt_shown', { ms_since_snap: msSinceSnap() }),
   onFocus: () => track('wish_input_focused', { ms_since_snap: msSinceSnap() }),
   onStart: () => track('wish_input_started'),
+  onHoldEarly: (props) => track('wish_hold_released_early', props),
   onConfirm: (text) => {
     // the snap may have been on an earlier visit, so wall-clock time
     const snapToSubmit = record.at ? Math.max(0, Date.now() - record.at) : null;
@@ -1041,7 +1042,11 @@ const wish = new WishUI({
     sound.wishRelease();
     buzz(28);
     // only the length goes to analytics; the text goes to the wish API alone
-    track('wish_submitted', { char_length: Array.from(text).length, snap_to_submit_ms: snapToSubmit });
+    track('wish_submitted', {
+      char_length: Array.from(text).length,
+      snap_to_submit_ms: snapToSubmit,
+      hold_early_releases: wish.earlyReleases,
+    });
     keepWish(text, snapToSubmit);
     lightTarget = 0.4;
     lightRate = 0.12;

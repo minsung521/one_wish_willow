@@ -8,12 +8,15 @@ const HOLD_MS = 1500;
 const INK = [239, 230, 214];
 
 export class WishUI {
-  constructor({ sound, onConfirm, onStart, onShown, onFocus }) {
+  constructor({ sound, onConfirm, onStart, onShown, onFocus, onHoldEarly }) {
     this.sound = sound;
     this.onConfirm = onConfirm;
     this.onStart = onStart;
     this.onShown = onShown;
     this.onFocus = onFocus;
+    this.onHoldEarly = onHoldEarly;
+    this.earlyReleases = 0; // presses let go before the hold completed
+    this.pressAt = 0;
     this.promptVisible = false;
     this.focused = false;
     this.root = document.getElementById('wish');
@@ -148,6 +151,7 @@ export class WishUI {
       wish_prompt_visible: this.promptVisible,
       wish_focused: this.focused,
       wish_has_text: this._hasText(),
+      wish_hold_early_releases: this.earlyReleases,
     };
   }
 
@@ -175,6 +179,7 @@ export class WishUI {
     if (on) {
       if (this.pressing || !this._hasText()) return;
       this.pressing = true;
+      this.pressAt = performance.now();
       this.btn.classList.add('pressing');
       this.sound.holdStart();
       buzz(8);
@@ -182,7 +187,17 @@ export class WishUI {
       if (!this.pressing) return;
       this.pressing = false;
       this.btn.classList.remove('pressing');
-      if (this.p < 1) this.sound.holdEnd();
+      if (this.p < 1) {
+        this.sound.holdEnd();
+        this.earlyReleases++;
+        if (this.onHoldEarly) {
+          this.onHoldEarly({
+            held_ms: Math.round(performance.now() - this.pressAt),
+            hold_progress: Math.round(this.p * 100) / 100,
+            attempt: this.earlyReleases,
+          });
+        }
+      }
     }
     if (!this.raf) {
       let last = performance.now();
