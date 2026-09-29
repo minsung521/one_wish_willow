@@ -206,13 +206,16 @@ PostHog (US Cloud) is loaded by its official snippet in `<head>` and started by 
 | `wish_prompt_shown` | the wish field is on screen (a hidden tab waits until it is seen) | `ms_since_snap` |
 | `wish_input_focused` | the field first gets focus (a tap on a phone) | `ms_since_snap` |
 | `wish_input_started` | the first character typed | |
-| `wish_submitted` | the 1.5 s hold completes | `char_length`, `snap_to_submit_ms` (never the text) |
+| `wish_hold_released_early` | the Hold pill let go before 1.5 s (every time) | `held_ms`, `hold_progress` (0–1, the fill when let go; it drains, so a quick re-press starts part-way), `attempt` (1, 2, …) |
+| `wish_submitted` | the 1.5 s hold completes | `char_length`, `snap_to_submit_ms`, `hold_early_releases` (never the text) |
 | `wish_store_result` | `/api/wish` answers or times out | `status`: `ok` / `error` / `rate_limited` / `timeout`, `latency_ms` |
 | `ending_viewed` | *Wait up to 24 hours…* appears | |
 | `share_clicked` | see Share above | `method`, `result`, `screen` |
 | `social_interest_clicked` | *See others' wishes* pressed (every press) | `screen`: `final` / `revisit` |
 | `email_submitted` | `/api/interest` stored the email (never the address itself) | `screen`: `final` / `revisit` |
-| `page_hidden` | the page is hidden or closed, once per hide (sent by beacon) | `stage` (the phase: `gate` / `opening` / `intro` / `idle` / `broken` / `wish` / `releasing` / `done` / `already`), `via`: `visibilitychange` / `pagehide`, `ms_since_snap` (null before the snap); in `wish` also `wish_prompt_visible`, `wish_focused`, `wish_has_text` (a boolean, never the text) |
+| `page_hidden` | the page is hidden or closed, once per hide (sent by beacon) | `stage` (the phase: `gate` / `opening` / `intro` / `idle` / `broken` / `wish` / `releasing` / `done` / `already`), `via`: `visibilitychange` / `pagehide`, `ms_since_snap` (null before the snap); in `wish` also `wish_prompt_visible`, `wish_focused`, `wish_has_text` (a boolean, never the text), `wish_hold_early_releases` |
+
+For MIN-177, a typed-but-not-sent drop-off with `wish_hold_early_releases: 0` never tried the Hold pill (didn't know how); one with several let go again and again (found it tedious).
 
 A drop-off after the snap (MIN-175) splits into: gone before `wish_prompt_shown`; shown but never `wish_input_focused`; focused but no `wish_input_started`; typed but no `wish_submitted`. `page_hidden` with `stage: wish` says where each one left.
 
