@@ -9,7 +9,7 @@ export const POSTHOG_HOST = 'https://us.i.posthog.com';
 // its own commit, so this is set by hand when releasing: the short hash of the
 // commit that changed the app. (Stored wishes get the deployed commit from the
 // server; this value is only their fallback.)
-export const APP_VERSION = 'ef02975';
+export const APP_VERSION = 'ffd6e82';
 
 // Where the wish is kept (api/wish.js).
 export const WISH_API = '/api/wish';
@@ -19,7 +19,7 @@ export const INTEREST_API = '/api/interest';
 
 // MIN-122 preview switch. Keep off until moderation (MIN-123) and the
 // server-side SOCIAL_ENABLED gate are ready for public access.
-export const SOCIAL_ENABLED = false;
+export const SOCIAL_ENABLED = true;
 export const SOCIAL_API = '/api/social';
 
 // The box's opening jingle. Set to null to drop the recorded file and use
