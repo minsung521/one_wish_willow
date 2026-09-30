@@ -356,7 +356,8 @@ body {
 .wish.compact .wish-inner { padding-top: 24px; padding-bottom: calc(24px + var(--vvh) * 0.06); }
 .wish.compact .wish-top { margin: auto 0; }
 .wish.compact .hold,
-.wish.compact .wish-note { position: absolute; visibility: hidden; }
+.wish.compact .wish-note,
+.wish.compact .wish-others { position: absolute; visibility: hidden; }
 
 .wish-kicker {
   margin: 0 0 14px;
@@ -522,6 +523,26 @@ body {
 /* with the keyboard up the foot of the screen is the keyboard's edge: keep it clear */
 .wish.compact .wish-note { opacity: 0; }
 
+.wish-others {
+  margin: 12px auto 0;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: rgba(220, 217, 200, 0.68);
+  font: 600 12px var(--serif);
+  min-height: 44px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+  touch-action: manipulation;
+  opacity: 0;
+  transition: opacity 1.8s ease;
+}
+.wish.field-on .wish-others { opacity: 1; }
+.wish-others[hidden] { display: none; }
+.wish-others:hover, .wish-others:focus-visible { color: var(--ink); }
+.wish-others:focus-visible { outline: 1px solid var(--ink-soft); outline-offset: 2px; border-radius: 6px; }
+
 .wish.leaving .wish-kicker,
 .wish.leaving .wish-q,
 .wish.leaving .wish-line,
@@ -531,8 +552,172 @@ body {
   opacity: 0 !important;
   transition: opacity 1.4s ease;
 }
+.wish.leaving .wish-others { visibility: hidden; pointer-events: none; }
 .wish.leaving #wish-input { color: transparent; caret-color: transparent; }
 .wish.leaving #wish-input::placeholder { color: transparent; }
+
+/* ------------------------------------------------------------------ */
+/* Others' wishes: many to a screen, scrolled, none the star (MIN-122)  */
+/* ------------------------------------------------------------------ */
+
+/* The whole screen, on the same dark stage. Each wish is set like the one the
+   visitor wrote (italic, cream, centred) and they follow one another down the
+   page with a small ember between them: read in passing, not as posts. */
+.social {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  background: radial-gradient(120% 70% at 50% 0%, #15120e 0%, #080706 55%, #050404 100%) fixed;
+  color: var(--ink);
+  font-family: var(--serif);
+}
+.social::backdrop { background: var(--bg); }
+.social-shell {
+  width: min(620px, 100%);
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 0 22px max(36px, calc(env(safe-area-inset-bottom) + 20px));
+  text-align: center;
+}
+/* Back stays reachable while scrolling; the wishes pass under a soft fade */
+.social-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 -22px;
+  padding: max(14px, env(safe-area-inset-top)) 22px 18px;
+  background: linear-gradient(#080706 62%, rgba(8, 7, 6, 0));
+}
+.social-brand {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 16px;
+  letter-spacing: 0.01em;
+  color: var(--ink-soft);
+}
+.social-brand sup { font: 600 8px var(--serif); vertical-align: super; }
+.social-back,
+.social-more {
+  min-height: 44px;
+  border: 1px solid rgba(220, 217, 200, 0.3);
+  border-radius: 999px;
+  padding: 0 18px;
+  background: rgba(3, 3, 3, 0.62);
+  color: var(--ink);
+  font: 700 11px var(--serif);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+  outline: none;
+  transition: border-color 0.4s ease, opacity 0.4s ease;
+}
+.social-back:hover,
+.social-more:hover,
+.social-back:focus-visible,
+.social-more:focus-visible { border-color: var(--ink); }
+.social-more[aria-disabled="true"] { opacity: 0.55; cursor: default; }
+.social-kicker {
+  margin: clamp(26px, 6vh, 64px) 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+.social h2 {
+  margin: 10px 0 12px;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(30px, 8vw, 44px);
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+}
+.social-intro {
+  max-width: 30em;
+  margin: 0 auto 18px;
+  text-wrap: balance;
+  color: var(--ink-soft);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.social-status {
+  min-height: 1.6em;
+  margin: 18px 0 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.social-status:empty { margin: 0; min-height: 0; }
+.social-list[aria-busy="true"] ~ .social-more[aria-disabled="true"] { animation: social-breathe 1.6s ease-in-out infinite; }
+.social-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.social-wish {
+  position: relative;
+  padding: 34px 0;
+  animation: social-in 0.9s ease both;
+}
+/* a small ember between two wishes */
+.social-wish + .social-wish::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--ember);
+  box-shadow: 0 0 10px rgba(232, 184, 119, 0.7);
+  opacity: 0.55;
+}
+.social-wish p {
+  max-width: 28em;
+  margin: 0 auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+  font-style: italic;
+  font-size: clamp(17px, 4.6vw, 20px);
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+}
+.social-more { display: block; margin: 18px auto 0; }
+.social-more[hidden] { display: none; }
+.social-footer {
+  margin: 56px 0 0;
+  text-wrap: balance;
+  color: var(--ink-faint);
+  font-size: 11px;
+  line-height: 1.7;
+}
+.social-footer span { display: block; }
+@keyframes social-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes social-breathe { 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) {
+  .social-wish,
+  .social-list[aria-busy="true"] ~ .social-more[aria-disabled="true"] { animation: none; }
+}
 
 /* ------------------------------------------------------------------ */
 /* Ending                                                              */

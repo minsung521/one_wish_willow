@@ -1,0 +1,10 @@
+{
+  "name": "one-wish-willow-dev",
+  "private": true,
+  "description": "A local server for the page and api/ against a local Postgres, and the checks for the social feed and admin (see README.md). Not deployed.",
+  "type": "module",
+  "devDependencies": {
+    "pg": "8.16.3",
+    "playwright": "1.56.1"
+  }
+}

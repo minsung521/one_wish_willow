@@ -1,0 +1,54 @@
+PASS  public GET, 0 approved: empty list, next null
+PASS  admin GET session without cookie: 401
+PASS  admin list without cookie: 401, no data
+PASS  admin PATCH without cookie: 401
+PASS  admin PATCH from another origin: 403
+PASS  admin PATCH with no Origin and no Sec-Fetch-Site: 403
+PASS  nothing changed by the refused requests
+PASS  login from another origin: 403
+PASS  login as a form post (text/plain): 400
+PASS  login with a wrong password: 401
+PASS  login: 200
+PASS  cookie is __Host-, HttpOnly, Secure, SameSite=Strict, Path=/  (__Host-oww_admin=…; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=43200)
+PASS  the password is not in the response
+PASS  GET session with the cookie: 200
+PASS  tampered cookie: 401
+PASS  expired (but signed) session: 401
+PASS  pending list: 20, newest first, with text/created_at/status
+PASS  counts: 30 pending
+PASS  pending list, page 2: 10, next null
+PASS  HTML-like text comes back as plain text
+PASS  bad status: 400
+PASS  bad cursor: 400
+PASS  approve #1: 200, approved
+PASS  approve #1 in DB: approved_at and reviewed_at set
+PASS  PATCH answer has no wish text
+PASS  public GET shows #1 only
+PASS  approve #1 again (double click): 200 unchanged
+PASS  reject #1 from a stale "pending" view: 409 with current status
+PASS  pending -> hidden: 400 invalid_transition
+PASS  approved -> rejected: 400 invalid_transition
+PASS  unknown id: 404
+PASS  string id: 400
+PASS  hide #1: 200, hidden, approved_at null
+PASS  hide #1 in DB: approved_at NULL, reviewed_at set
+PASS  public GET no longer shows #1
+PASS  hidden -> approved (second look): 200
+PASS  public GET shows #1 again
+PASS  reject #2: 200, approved_at NULL, reviewed_at set
+PASS  public GET does not show rejected #2
+PASS  6 simultaneous approvals of #3: exactly 1 applies, 5 unchanged  (1/5)
+PASS  approve vs reject of #4 at once: one 200, one 409, DB consistent  (200,409 -> approved)
+PASS  public pages: 20 + 5 of 25 approved, no repeats, next null at the end
+PASS  public GET bad cursor: 400
+PASS  logout: 200, cookie cleared
+PASS  logout from another origin: 403
+PASS  5 wrong passwords, then 429 with Retry-After (even for the right one)  (401,401,401,401,401,429)
+PASS  another address can still log in
+PASS  SOCIAL_ENABLED unset: public GET 404 closed
+PASS  SOCIAL_ENABLED=false: public GET 404
+PASS  no ADMIN_PASSWORD_HASH: admin list 404 closed
+PASS  no ADMIN_PASSWORD_HASH: login 404 closed
+PASS  ADMIN_SESSION_SECRET under 32 characters: admin 404
+
+52/52 passed

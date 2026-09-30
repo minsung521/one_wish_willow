@@ -10,6 +10,8 @@ import { loadRecord, saveRecord } from './storage.js';
 import { WishUI } from './wish.js';
 import { ShareToast } from './share.js';
 import { InterestDialog } from './interest.js';
+import { SocialFeed } from './social.js';
+import { SOCIAL_ENABLED } from './config.js';
 import { track, setProps } from './analytics.js';
 import { visit } from './visit.js';
 import { keepWish } from './keep.js';
@@ -1014,11 +1016,26 @@ const interest = new InterestDialog({
   onOpen: () => share.hold(true),
   onClose: () => share.hold(false),
 });
+// from the wish screen there is no Share toast to keep up
+const social = new SocialFeed({
+  onOpen: (screen) => { if (screen !== 'wish') share.hold(true); },
+  onClose: (screen) => { if (screen !== 'wish') share.hold(false); },
+});
 const share = new ShareToast({
   avoid: [ui.credit],
   // the toast's screens are 'ending' / 'revisit'; the event says 'final' / 'revisit'
-  onOthers: (screen) => interest.open(screen === 'revisit' ? 'revisit' : 'final'),
+  onOthers: (screen) => SOCIAL_ENABLED
+    ? social.open(screen === 'revisit' ? 'revisit' : 'final')
+    : interest.open(screen === 'revisit' ? 'revisit' : 'final'),
 });
+
+const wishOthers = $('wish-others');
+if (SOCIAL_ENABLED) {
+  wishOthers.hidden = false;
+  wishOthers.addEventListener('click', () => {
+    if (record.state === 'broken' && phase === 'wish') social.open('wish');
+  });
+}
 
 // wall-clock, since the snap may have been on an earlier visit
 const msSinceSnap = () =>

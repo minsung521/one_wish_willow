@@ -83,7 +83,8 @@
         <span class="hold-label">Hold to make your wish</span>
         <span class="hold-track" aria-hidden="true"><span class="hold-fill" id="hold-fill"></span></span>
       </button>
-      <p class="wish-note" id="wish-note">Single Use Only. Once made, it cannot be undone or repeated. Consider <span class="nowrap">long-term</span> effects. Wishes are irreversible.</p>
+      <p class="wish-note" id="wish-note">Single Use Only. Consider <span class="nowrap">long-term</span> effects. Wishes are irreversible.</p>
+      <button class="wish-others" id="wish-others" type="button" hidden>See others' wishes</button>
     </div>
   </section>
 
@@ -115,6 +116,23 @@
         <button class="interest-submit" id="interest-submit" type="submit">Notify me</button>
       </form>
       <p class="interest-done" id="interest-done" role="status" hidden>Got it! We'll write to you.</p>
+    </div>
+  </dialog>
+
+  <!-- MIN-122: others' wishes, only those the maker approved (api/social.js). Behind SOCIAL_ENABLED in js/config.js -->
+  <dialog class="social" id="social" aria-labelledby="social-title">
+    <div class="social-shell">
+      <header class="social-header">
+        <button class="social-back" id="social-back" type="button" autofocus>← Back</button>
+        <p class="social-brand">One Wish Willow<sup>™</sup></p>
+      </header>
+      <p class="social-kicker">One branch. One wish.</p>
+      <h2 id="social-title">What did they wish for?</h2>
+      <p class="social-intro">A glimpse at what others chose.</p>
+      <ol class="social-list ph-no-capture ph-mask" id="social-list" aria-label="Wishes"></ol>
+      <p class="social-status" id="social-status" role="status" aria-live="polite"></p>
+      <button class="social-more" id="social-more" type="button" hidden>See more wishes</button>
+      <p class="social-footer"><span>Wishes are shown anonymously.</span><span>Unofficial fan-made project. Not affiliated with Obsession or its studio.</span></p>
     </div>
   </dialog>
 
