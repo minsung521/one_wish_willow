@@ -19,7 +19,7 @@ export const INTEREST_API = '/api/interest';
 
 // MIN-122 preview switch. Keep off until moderation (MIN-123) and the
 // server-side SOCIAL_ENABLED gate are ready for public access.
-export const SOCIAL_ENABLED = false;
+export const SOCIAL_ENABLED = true;
 export const SOCIAL_API = '/api/social';
 
 // The box's opening jingle. Set to null to drop the recorded file and use
