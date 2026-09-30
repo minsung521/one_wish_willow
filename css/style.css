@@ -552,7 +552,7 @@ body {
   opacity: 0 !important;
   transition: opacity 1.4s ease;
 }
-.wish.leaving .wish-others { display: none; }
+.wish.leaving .wish-others { visibility: hidden; pointer-events: none; }
 .wish.leaving #wish-input { color: transparent; caret-color: transparent; }
 .wish.leaving #wish-input::placeholder { color: transparent; }
 

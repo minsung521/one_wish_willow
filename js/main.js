@@ -1053,7 +1053,6 @@ const wish = new WishUI({
     // the snap may have been on an earlier visit, so wall-clock time
     const snapToSubmit = record.at ? Math.max(0, Date.now() - record.at) : null;
     phase = 'releasing';
-    wishOthers.hidden = true;
     record.state = 'wished';
     record.wishedAt = Date.now();
     saveRecord(record);
