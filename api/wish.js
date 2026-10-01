@@ -50,10 +50,10 @@ export async function POST(request) {
       sql`select pg_advisory_xact_lock(${LOCK_NS}::int, hashtext(${w.client_id}::text))`,
       sql`insert into wishes
             (wish_text, char_length, locale, tz_offset, country, device_type, referrer,
-             utm_source, snap_to_submit_ms, client_id, app_version, ip_hash)
+             utm_source, snap_to_submit_ms, client_id, app_version, ip_hash, is_private)
           select ${w.wish_text}::text, ${w.char_length}::int, ${w.locale}::text, ${w.tz_offset}::int,
                  ${w.country}::text, ${w.device_type}::text, ${w.referrer}::text, ${w.utm_source}::text,
-                 ${w.snap_to_submit_ms}::int, ${w.client_id}::uuid, ${w.app_version}::text, ${w.ip_hash}::text
+                 ${w.snap_to_submit_ms}::int, ${w.client_id}::uuid, ${w.app_version}::text, ${w.ip_hash}::text, ${w.is_private}::boolean
           where not exists (select 1 from wishes where client_id = ${w.client_id}::uuid)
             and (select count(*) from wishes
                   where ip_hash = ${w.ip_hash}::text
@@ -90,6 +90,8 @@ function readWish(b, headers) {
     client_id: b.client_id.toLowerCase(),
     app_version: str(b.app_version, 64),
     ip_hash: null,
+    // only a real `true` makes it private; missing or any other value means public-eligible
+    is_private: b.is_private === true,
   };
 }
 
