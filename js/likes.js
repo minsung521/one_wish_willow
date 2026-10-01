@@ -204,8 +204,9 @@ export function makeExpandable(els) {
  * The visitor's own wish, pinned at the top of the feed on a faint panel (no
  * outline): a small "Your wish" label, the wish itself on up to three lines
  * (More for the rest), and on the right "Received ♥ 12" with "+3 new", so
- * it doesn't read as a heart they pressed. Not approved, or private (MIN-194): "Only you can see
- * this for now." beside the label and no number. Under it, unless an email
+ * it doesn't read as a heart they pressed. Not approved: "Only you can see
+ * this for now." beside the label and no number. A private wish (MIN-194)
+ * gets no card at all (MIN-196). Under it, unless an email
  * is already in for this client_id, a small "Get notified" that opens the
  * email form in place (MIN-158's storage and notice).
  *
@@ -215,6 +216,7 @@ export function makeExpandable(els) {
  */
 export function renderMyWish(root, data, screen) {
   const { wish } = data;
+  if (wish.status === 'private') return; // MIN-196: no card for a private wish
   const approved = wish.status === 'approved';
   const card = document.createElement('section');
   card.className = 'my-wish';
@@ -384,11 +386,15 @@ function emailAsk(screen) {
 // ------------------------------------------------------------------ the revisit toast
 
 /**
- * On the revisit screen only, once the visitor's own wish is known:
- * "Your wish got ♥ 12  +3 new" and the way to the feed. With no likes yet
- * (or not approved, or private), only the button. It stays until closed (×) and sits at
- * the top, clear of the lines in the middle and of Share at the bottom.
+ * On the revisit screen only (MIN-196): shown when the visitor's own wish is
+ * approved and shows at least one like, as "Your wish got ♥ 12  +3 new" and
+ * the way to the feed. Not for no likes, pending, private, rejected or
+ * hidden. It stays until closed; × remembers the count it showed
+ * (oww_toast_closed_likes, apart from the "+n new" baseline), and it comes
+ * back only once that count has changed. It sits at the top, clear of the
+ * lines in the middle and of Share at the bottom.
  */
+const CLOSED_KEY = 'oww_toast_closed_likes';
 export class RevisitToast {
   /** @param {{ onGo: () => void }} hooks onGo: the button was pressed */
   constructor({ onGo }) {
@@ -396,7 +402,15 @@ export class RevisitToast {
     this.line = document.getElementById('likes-toast-line');
     this.go = document.getElementById('likes-toast-go');
     this.props = null;
-    document.getElementById('likes-toast-close').addEventListener('click', () => this.close());
+    this.likes = null;
+    document.getElementById('likes-toast-close').addEventListener('click', () => {
+      try {
+        if (this.likes !== null) localStorage.setItem(CLOSED_KEY, String(this.likes));
+      } catch {
+        /* it will just come back next time */
+      }
+      this.close();
+    });
     this.go.addEventListener('click', () => {
       track('revisit_toast_clicked', this.props);
       this.close();
@@ -404,23 +418,30 @@ export class RevisitToast {
     });
   }
 
-  /** @param {{ wish: object }} data from loadMyWish(), with a wish */
+  /** Whether this answer from loadMyWish() earns the toast. */
+  static wants(data) {
+    const wish = data && data.wish;
+    if (!wish || wish.status !== 'approved' || !(wish.likes >= 1)) return false;
+    try {
+      return localStorage.getItem(CLOSED_KEY) !== String(wish.likes);
+    } catch {
+      return true;
+    }
+  }
+
+  /** @param {{ wish: object }} data from loadMyWish(), one that RevisitToast.wants() */
   show(data) {
     const { wish } = data;
-    const counted = wish.status === 'approved' && wish.likes >= 1;
-    let delta = null;
-    if (counted) {
-      delta = likeDelta(wish.likes);
-      const n = document.createElement('span');
-      n.className = 'likes-toast-n';
-      n.append(heart(), ` ${wish.likes}`);
-      this.line.replaceChildren('Your wish got ', n);
-      const badge = sinceBadge(delta);
-      if (badge) this.line.append(' ', badge);
-      rememberShown(wish.likes);
-    }
-    this.line.hidden = !counted;
-    this.root.classList.toggle('bare', !counted);
+    const delta = likeDelta(wish.likes);
+    const n = document.createElement('span');
+    n.className = 'likes-toast-n';
+    n.append(heart(), ` ${wish.likes}`);
+    this.line.replaceChildren('Your wish got ', n);
+    const badge = sinceBadge(delta);
+    if (badge) this.line.append(' ', badge);
+    this.line.hidden = false;
+    rememberShown(wish.likes);
+    this.likes = wish.likes;
     this.props = countProps(wish, delta);
     this.root.hidden = false;
     requestAnimationFrame(() => requestAnimationFrame(() => this.root.classList.add('on')));

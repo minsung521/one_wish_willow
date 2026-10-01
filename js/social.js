@@ -6,9 +6,10 @@
 // out of session replays. Closing it (Back, Escape) returns to where it was
 // opened, the wish screen's unsent text included: nothing there is touched.
 //
-// With likes on (MIN-160, js/likes.js) the server mixes the order (most liked,
-// shuffled, newest in turn) and pages by offset; each wish gets a heart, and
-// the visitor's own wish is pinned above the list instead of in it.
+// With likes on (MIN-160, js/likes.js) each wish gets a heart, the visitor's
+// own wish is pinned above the list instead of in it, and the visitor picks
+// the order (MIN-196): Popular (the default), Latest or Random, remembered in
+// localStorage. The server sorts and pages by offset.
 
 import { SOCIAL_API } from './config.js';
 import { track } from './analytics.js';
@@ -23,6 +24,19 @@ const RETRY = 'Try again';
 const EMPTY = 'No wishes to show yet. Come back soon.';
 const FAILED = "Couldn't load wishes. Please check your connection and try again.";
 
+const SORT_KEY = 'oww_feed_sort';
+const SORTS = [['popular', 'Popular'], ['latest', 'Latest'], ['random', 'Random']];
+
+/** The order picked last time, or Popular. */
+function savedSort() {
+  try {
+    const v = localStorage.getItem(SORT_KEY);
+    return SORTS.some(([k]) => k === v) ? v : 'popular';
+  } catch {
+    return 'popular';
+  }
+}
+
 export class SocialFeed {
   /**
    * @param {{ onOpen?: (screen: string) => void, onClose?: (screen: string) => void }} hooks
@@ -35,10 +49,19 @@ export class SocialFeed {
     this.more = document.getElementById('social-more');
     this.back = document.getElementById('social-back');
     this.mine = document.getElementById('social-mine');
+    // likes on: the order, just above the list (under the pinned card), right-aligned
+    this.sort = likesOn ? savedSort() : null;
+    this.sortBar = likesOn ? this._makeSortBar() : null;
+    if (this.sortBar) this.list.before(this.sortBar);
     this.skeleton = likesOn ? makeSkeleton() : null;
     if (this.skeleton) this.list.before(this.skeleton);
     // likes on: a shorter top (no intro line), so others' wishes come up sooner
     if (likesOn) this.dlg.classList.add('likes');
+    // The first opening lays the whole feed out for the first time, which is
+    // most of what a tap on "See others' wishes" costs. Do that once while the
+    // page is idle, invisibly and within one task (nothing is painted), so the
+    // tap itself only has to show it.
+    if (likesOn) whenIdle(() => this._warm());
     this.onOpen = onOpen;
     this.onClose = onClose;
     this.cursor = null;
@@ -67,7 +90,7 @@ export class SocialFeed {
     this.list.replaceChildren();
     this.cursor = null;
     // likes: one shuffle and one ranking time per opening, so the pages agree
-    this.mix = likesOn ? { seed: (Math.random() * 0x7fffffff) | 0, at: Date.now(), offset: 0, seen: new Set() } : null;
+    this.mix = likesOn ? freshOrder(this.sort) : null;
     this.mine.replaceChildren();
     this.mine.hidden = true;
     this.more.hidden = true;
@@ -77,14 +100,18 @@ export class SocialFeed {
     } catch {
       this.dlg.setAttribute('open', ''); // no <dialog> support: shown, just not modal
     }
-    this.dlg.scrollTop = 0;
-    this.back.focus({ preventScroll: true });
     if (likesOn) {
       // The tap only puts the feed's frame up (with a few grey rows); the
       // requests, the event and the rest wait until that frame is painted.
+      // Focus and the scroll reset each make the browser lay the page out
+      // there and then, so they wait too (a reopened dialog starts at the top).
       this._skeleton(true);
       const generation = this.generation;
       afterPaint(() => {
+        if (generation === this.generation) {
+          if (this.dlg.scrollTop) this.dlg.scrollTop = 0;
+          this.back.focus({ preventScroll: true });
+        }
         this._mine(screen, entry);
         if (generation !== this.generation) return; // closed meanwhile
         if (this.onOpen) this.onOpen(screen);
@@ -92,9 +119,21 @@ export class SocialFeed {
       });
       return;
     }
+    this.dlg.scrollTop = 0;
+    this.back.focus({ preventScroll: true });
     track('social_feed_opened', { screen });
     if (this.onOpen) this.onOpen(screen);
     this.load();
+  }
+
+  _warm() {
+    if (this.dlg.open) return;
+    const d = this.dlg;
+    const before = d.getAttribute('style');
+    d.style.cssText = 'display:block;visibility:hidden;pointer-events:none';
+    void d.offsetHeight;
+    if (before === null) d.removeAttribute('style');
+    else d.setAttribute('style', before);
   }
 
   /** Whether the feed is up, covering the stage (main.js stops drawing it meanwhile). */
@@ -114,13 +153,14 @@ export class SocialFeed {
     const generation = this.generation;
     if (screen === 'wish') {
       // the wish screen: the wish isn't made yet, so there is nothing to ask for
-      track('social_feed_opened', { screen, entry: entry || null, has_my_wish: false });
+      track('social_feed_opened', { screen, entry: entry || null, has_my_wish: false, sort: this.sort });
       return;
     }
     const data = await loadMyWish();
-    const has = !!(data && data.wish);
+    // a wish its maker kept private (MIN-194) gets no card here (MIN-196)
+    const has = !!(data && data.wish && data.wish.status !== 'private');
     // sent even if the feed was closed meanwhile; only the card needs it open
-    track('social_feed_opened', { screen, entry: entry || null, has_my_wish: has });
+    track('social_feed_opened', { screen, entry: entry || null, has_my_wish: has, sort: this.sort });
     if (has && generation === this.generation) renderMyWish(this.mine, data, screen);
   }
 
@@ -140,6 +180,7 @@ export class SocialFeed {
     this.busy = false;
     this.list.removeAttribute('aria-busy');
     this._skeleton(false);
+    this._menu(false);
     if (this.onClose) this.onClose(this.screen);
     const el = this.opener;
     this.opener = null;
@@ -173,6 +214,7 @@ export class SocialFeed {
       const url = new URL(SOCIAL_API, location.href);
       if (this.mix && this.mix.offset !== null) {
         url.searchParams.set('client_id', visit.clientId);
+        url.searchParams.set('sort', this.mix.sort);
         url.searchParams.set('seed', String(this.mix.seed));
         url.searchParams.set('at', String(this.mix.at));
         url.searchParams.set('offset', String(this.mix.offset));
@@ -185,6 +227,7 @@ export class SocialFeed {
       // the server without likes answers the old way: newest first, by cursor
       const mixed = !!this.mix && data.mode === 'mix';
       if (this.mix && !mixed) this.mix.offset = null;
+      if (this.sortBar) this.sortBar.hidden = !mixed; // the old answer has no order to pick
       this.list.classList.toggle('rows', mixed);
       const items = [];
       const texts = [];
@@ -248,6 +291,99 @@ export class SocialFeed {
   }
 
   /**
+   * A small menu: "Popular ▾" opens Popular / Latest / Random. Closed by a
+   * choice, a tap elsewhere, or Escape (which then leaves the feed open).
+   */
+  _makeSortBar() {
+    const bar = document.createElement('div');
+    bar.className = 'social-sort';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'social-sort-btn';
+    btn.id = 'social-sort-btn';
+    btn.setAttribute('aria-haspopup', 'menu');
+    btn.setAttribute('aria-expanded', 'false');
+    const menu = document.createElement('div');
+    menu.className = 'social-sort-menu';
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-labelledby', 'social-sort-btn');
+    menu.hidden = true;
+    for (const [key, label] of SORTS) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'social-sort-item';
+      item.setAttribute('role', 'menuitemradio');
+      item.dataset.sort = key;
+      item.textContent = label;
+      item.addEventListener('click', () => {
+        this._menu(false);
+        this._setSort(key);
+        btn.focus({ preventScroll: true });
+      });
+      menu.append(item);
+    }
+    btn.addEventListener('click', () => this._menu(menu.hidden));
+    // a tap anywhere else closes it
+    this.dlg.addEventListener('pointerdown', (e) => { if (!bar.contains(e.target)) this._menu(false); });
+    // Escape closes the menu first, not the feed
+    this.dlg.addEventListener('cancel', (e) => {
+      if (menu.hidden) return;
+      e.preventDefault();
+      this._menu(false);
+      btn.focus({ preventScroll: true });
+    });
+    bar.append(btn, menu);
+    this.sortBtn = btn;
+    this.sortMenu = menu;
+    this._paintSort();
+    return bar;
+  }
+
+  _menu(open) {
+    if (!this.sortMenu) return;
+    this.sortMenu.hidden = !open;
+    this.sortBtn.setAttribute('aria-expanded', String(open));
+    if (open) {
+      const cur = this.sortMenu.querySelector('[aria-checked="true"]');
+      if (cur) cur.focus({ preventScroll: true });
+    }
+  }
+
+  _paintSort() {
+    const label = SORTS.find(([k]) => k === this.sort)[1];
+    this.sortBtn.textContent = label;
+    this.sortBtn.setAttribute('aria-label', `Order: ${label}`);
+    for (const it of this.sortMenu.children) it.setAttribute('aria-checked', String(it.dataset.sort === this.sort));
+  }
+
+  /** Another order: the list starts again from the top in it; the pinned card stays. */
+  _setSort(next) {
+    if (next === this.sort || !this.mix) return;
+    track('feed_sort_changed', { from: this.sort, to: next });
+    this.sort = next;
+    try {
+      localStorage.setItem(SORT_KEY, next);
+    } catch {
+      /* not remembered, still applied */
+    }
+    this._paintSort();
+    if (!this.dlg.open) return;
+    this.generation++;
+    if (this.request) this.request.abort();
+    this.request = null;
+    this.busy = false;
+    this.mix = freshOrder(next);
+    this.cursor = null;
+    this.list.replaceChildren();
+    this.list.removeAttribute('aria-busy');
+    this.more.hidden = true;
+    this.status.textContent = '';
+    this._skeleton(true);
+    this.dlg.scrollTop = 0;
+    this.load();
+  }
+
+  /**
    * The heart under a wish: ♥ and the count, nothing else. A tap turns it on
    * or off at once; the server is told after, and if it says no, it goes back.
    * Taps while a request is out are folded into one more request at the end.
@@ -267,6 +403,7 @@ export class SocialFeed {
       count.textContent = String(st.shown);
     };
     const generation = this.generation;
+    const sort = this.mix ? this.mix.sort : null; // the order this list is in
     const send = async () => {
       st.busy = true;
       const r = await sendLike(wish.id, st.want);
@@ -284,7 +421,7 @@ export class SocialFeed {
       if (typeof r.likes === 'number') st.likes = r.likes;
       if (changed) {
         const position = Array.prototype.indexOf.call(this.list.children, item) + 1;
-        track(r.liked ? 'wish_liked' : 'wish_unliked', { wish_id: wish.id, position, slot: wish.slot || null });
+        track(r.liked ? 'wish_liked' : 'wish_unliked', { wish_id: wish.id, position, sort });
       }
       if (st.want !== st.liked) send(); // tapped again meanwhile
       else {
@@ -306,6 +443,17 @@ export class SocialFeed {
     paint();
     return btn;
   }
+}
+
+/** One order for one opening of the feed (or one choice of order): its shuffle, its ranking time, what was shown. */
+function freshOrder(sort) {
+  return { sort, seed: (Math.random() * 0x7fffffff) | 0, at: Date.now(), offset: 0, seen: new Set() };
+}
+
+/** Run fn when the page has a moment (or after a while, where there is no requestIdleCallback). */
+function whenIdle(fn) {
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(fn, { timeout: 4000 });
+  else setTimeout(fn, 1500);
 }
 
 /** Run fn once the next frame has been painted. */

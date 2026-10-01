@@ -87,7 +87,12 @@ async function context(device, { social = true, record = null } = {}) {
   await ctx.route('**/js/config.js', async (r) => {
     const res = await r.fetch();
     const text = await res.text();
-    r.fulfill({ response: res, body: text.replace(/export const SOCIAL_ENABLED = (true|false);/, `export const SOCIAL_ENABLED = ${!!social};`) });
+    // likes (MIN-160) stay off here: this checks the feed as MIN-122 made it; likes-flow.mjs covers them
+    r.fulfill({
+      response: res,
+      body: text.replace(/export const SOCIAL_ENABLED = (true|false);/, `export const SOCIAL_ENABLED = ${!!social};`)
+        .replace(/export const LIKES_ENABLED = (true|false);/, 'export const LIKES_ENABLED = false;'),
+    });
   });
   if (record) {
     await ctx.addInitScript((rec) => {
