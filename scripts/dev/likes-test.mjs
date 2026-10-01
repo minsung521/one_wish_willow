@@ -45,11 +45,11 @@ let ids = {};
 
 async function seed() {
   await db.query('truncate likes, wishes, social_interest restart identity cascade');
-  const add = async (text, client, status) => {
+  const add = async (text, client, status, isPrivate = false) => {
     const { rows } = await db.query(
-      `insert into wishes (wish_text, char_length, client_id, moderation_status, approved_at, reviewed_at)
-       values ($1, $2, $3, $4, $5, $5) returning id`,
-      [text, Array.from(text).length, client, status, status === 'approved' ? new Date() : null],
+      `insert into wishes (wish_text, char_length, client_id, moderation_status, approved_at, reviewed_at, is_private)
+       values ($1, $2, $3, $4, $5, $5, $6) returning id`,
+      [text, Array.from(text).length, client, status, status === 'approved' ? new Date() : null, isPrivate],
     );
     return Number(rows[0].id);
   };
@@ -58,6 +58,8 @@ async function seed() {
   ids.pending = await add('TEST pending', randomUUID(), 'pending');
   ids.rejected = await add('TEST rejected', randomUUID(), 'rejected');
   ids.hidden = await add('TEST hidden', randomUUID(), 'hidden');
+  // MIN-194: approved by the maker, but kept private by the one who made it
+  ids.privateApproved = await add('TEST approved but private', randomUUID(), 'approved', true);
   ids.mine = await add('TEST my own wish', ME, 'approved');
 }
 
@@ -87,8 +89,12 @@ check('pending wish: 404', (await like(ids.pending, OTHER)).status === 404);
 check('rejected wish: 404', (await like(ids.rejected, OTHER)).status === 404);
 check('hidden wish: 404', (await like(ids.hidden, OTHER)).status === 404);
 check('no such wish: 404', (await like(999999, OTHER)).status === 404);
+check('approved but private (MIN-194): 404 not_found, as unapproved',
+  await like(ids.privateApproved, OTHER).then((r) => r.status === 404 && r.json.status === 'not_found'));
+check('unliking a private wish: no count shown',
+  await like(ids.privateApproved, OTHER, 'unlike').then((r) => r.status === 200 && r.json.liked === false && r.json.likes === null));
 {
-  const { rows } = await db.query('select count(*)::int n from likes where wish_id = any($1)', [[ids.mine, ids.pending, ids.rejected, ids.hidden]]);
+  const { rows } = await db.query('select count(*)::int n from likes where wish_id = any($1)', [[ids.mine, ids.pending, ids.rejected, ids.hidden, ids.privateApproved]]);
   check('no rows for refused likes', rows[0].n === 0);
 }
 check('bad client_id: 400', (await like(A, 'not-a-uuid')).status === 400);
@@ -132,6 +138,15 @@ check('not JSON: 400', (await fetch(BASE + '/api/like', { method: 'POST', body: 
   check('email via /api/interest: 201', e.status === 201);
   check('my wish: email submitted now', (await mine(ME)).json.email_submitted === true);
 
+  // MIN-194: their own private wish, approved or not, reads as private with no count
+  for (const status of ['approved', 'pending']) {
+    await db.query(`update wishes set is_private = true, moderation_status = $2, approved_at = $3 where id = $1`,
+      [ids.mine, status, status === 'approved' ? new Date() : null]);
+    const p = await mine(ME);
+    check(`my wish, private and ${status}: status private, no likes shown`,
+      p.json.wish.status === 'private' && p.json.wish.likes === null && p.json.wish.like_count === null, JSON.stringify(p.json.wish));
+  }
+  await db.query('update wishes set is_private = false where id = $1', [ids.mine]);
   for (const status of ['pending', 'rejected', 'hidden']) {
     await db.query(`update wishes set moderation_status = $2, approved_at = null where id = $1`, [ids.mine, status]);
     const p = await mine(ME);
@@ -171,6 +186,7 @@ async function feedAll(client, seed, at) {
   check('every approved wish but my own, once', idsSeen.length === approvedCount && ids.approved.every((id) => idsSeen.includes(id)));
   check('my own wish is not in it', !idsSeen.includes(ids.mine));
   check('no pending, rejected or hidden wish', ![ids.pending, ids.rejected, ids.hidden].some((id) => idsSeen.includes(id)));
+  check('no approved-but-private wish (MIN-194)', !idsSeen.includes(ids.privateApproved));
   const slots = out.slice(0, 9).map((w) => w.slot).join(',');
   check('the first nine go like, random, latest in turn', slots === 'like,random,latest,like,random,latest,like,random,latest', slots);
   const kinds = new Set(out.map((w) => w.slot));

@@ -55,26 +55,31 @@ const squash = (t) => (t || '').replace(/\s+/g, ' ').trim();
 const LONG = '매일 아침 가족이 모두 건강하게 웃으며 일어나기를. I wish my little brother gets into the art school he dreams of, and that Mom finally takes a real vacation.'.slice(0, 140);
 const LINES = 'line one\nline two\n\nline four\nline five\n\n\nline eight';
 const MY_WISH = 'I wish I could hear my grandmother laugh once more, and tell her everything that happened since she left: the job, the flat, the cat.';
+const PRIVATE_OTHER = 'TEST approved but private (MIN-194)';
 const ME = randomUUID();
 let ids = {};
 
-async function seed({ myStatus = 'approved', myLikes = 0 } = {}) {
+async function seed({ myStatus = 'approved', myLikes = 0, myPrivate = false } = {}) {
   await db.query('truncate likes, wishes, social_interest restart identity cascade');
-  const add = async (text, client, status) => {
+  const add = async (text, client, status, isPrivate = false) => {
     const { rows } = await db.query(
-      `insert into wishes (wish_text, char_length, client_id, moderation_status, approved_at, reviewed_at)
-       values ($1, $2, $3, $4, $5, $5) returning id`,
-      [text, Array.from(text).length, client, status, status === 'approved' ? new Date() : null],
+      `insert into wishes (wish_text, char_length, client_id, moderation_status, approved_at, reviewed_at, is_private)
+       values ($1, $2, $3, $4, $5, $5, $6) returning id`,
+      [text, Array.from(text).length, client, status, status === 'approved' ? new Date() : null, isPrivate],
     );
     return Number(rows[0].id);
   };
   ids = { approved: [] };
+
   for (let i = 0; i < 30; i++) {
     const text = i < TEXTS.length ? TEXTS[i] : i === 28 ? LINES : i === 29 ? LONG : `TEST approved wish #${i + 1}`;
     ids.approved.push(await add(text, randomUUID(), 'approved'));
   }
   ids.pending = await add('TEST someone else, pending', randomUUID(), 'pending');
-  if (myStatus) ids.mine = await add(MY_WISH, ME, myStatus);
+  // MIN-194: approved by the maker but kept private by its writer; the newest approved one,
+  // so it would lead the latest pool if the server let it through
+  ids.privateOther = await add(PRIVATE_OTHER, randomUUID(), 'approved', true);
+  if (myStatus) ids.mine = await add(MY_WISH, ME, myStatus, myPrivate);
   // a spread of likes, so the most-liked order isn't the newest
   for (let i = 0; i < 6; i++) await addLikes(ids.approved[5 + i * 3], (i + 1) * 2);
   if (myStatus && myLikes) await addLikes(ids.mine, myLikes);
@@ -303,6 +308,7 @@ async function approvedFlow(device, tag) {
   await page.waitForFunction(() => document.querySelectorAll('#social-list > li').length >= 30);
   const all = await page.evaluate(() => [...document.querySelectorAll('#social-list > li p')].map((p) => p.textContent));
   check(`[${tag}] two pages: all 30 others, none twice`, all.length === 30 && new Set(all).size === 30 && ids1.every((t, i) => all[i] === t));
+  check(`[${tag}] an approved but private wish (MIN-194) is not in the feed`, !all.includes(PRIVATE_OTHER));
 
   // rows: the wish left, the heart right at the first line, 44×44 to touch
   const rowShape = await page.evaluate(() => [...document.querySelectorAll('#social-list > li')].slice(0, 8).map((li) => {
@@ -513,6 +519,30 @@ async function quietFlow(device, tag) {
   check(`[${tag}] approved, 0 likes: the card shows a faint ♥ 0`,
     (await page2.textContent('.my-wish-n')).trim() === '0' && await page2.evaluate(() => document.querySelector('.my-wish-count').classList.contains('zero')));
   await ctx2.close();
+
+  // MIN-194: their own wish is approved but private, with likes in the table: shown like a pending one
+  await db.query('update wishes set is_private = true where id = $1', [ids.mine]);
+  await addLikes(ids.mine, 4);
+  const ctxP = await context(device, { record: wished() });
+  const pageP = await ctxP.newPage();
+  await toRevisit(pageP);
+  await pageP.waitForSelector('#likes-toast.on', { timeout: 8000 });
+  check(`[${tag}] private: toast has only the button`, !(await visible(pageP, '#likes-toast-line')) && await visible(pageP, '#likes-toast-go'));
+  await tap(pageP, '#likes-toast-go', device);
+  await waitFeed(pageP);
+  await pageP.waitForSelector('.my-wish');
+  const priv = await pageP.evaluate(() => ({
+    note: document.querySelector('.my-wish-private') && document.querySelector('.my-wish-private').textContent,
+    count: !!document.querySelector('.my-wish-count'),
+  }));
+  check(`[${tag}] private card: "Only you can see this for now.", no count`, priv.note === 'Only you can see this for now.' && !priv.count);
+  e = await lastEvent(pageP, 'my_wish_viewed');
+  check(`[${tag}] my_wish_viewed: status private, no counts`, e && e.props.status === 'private' && e.props.like_count === null && e.props.display_like_count === null, JSON.stringify(e && e.props));
+  e = await lastEvent(pageP, 'revisit_toast_shown');
+  check(`[${tag}] private: revisit_toast_shown without a count`, e && e.props.like_count === null);
+  await pageP.evaluate(() => { document.getElementById('social').scrollTop = 0; });
+  await shot(pageP, `${tag}-12-feed-my-wish-private`);
+  await ctxP.close();
 
   // no wish under this client_id (it was made in another browser): no toast at all
   const ctx3 = await context(device, { record: wished(), client: randomUUID() });

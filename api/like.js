@@ -7,7 +7,8 @@
 //   200 { wish_id, liked, likes }   likes is what the wish shows (real + seed_likes)
 //   400 { status: 'invalid' }       malformed
 //   403 { status: 'own_wish' }      your own wish can't be liked
-//   404 { status: 'not_found' }     no such wish, or not approved (the same answer for both)
+//   404 { status: 'not_found' }     no such wish, not approved, or kept private by its maker
+//                                   (MIN-194): one answer for all three
 //   404 { status: 'closed' }        the server switch LIKES_ENABLED is off
 //   429 { status: 'rate_limited' }  too many likes from this address
 //   500 { status: 'error' }
@@ -52,7 +53,8 @@ export async function POST(request) {
     const ip = ipHash(request.headers, IP_HASH_SECRET);
     const sql = neon(DATABASE_URL);
 
-    const state = sql`select w.moderation_status = 'approved' and w.approved_at is not null as approved,
+    // "approved" here means on the public feed: approved and not private
+    const state = sql`select w.moderation_status = 'approved' and w.approved_at is not null and w.is_private = false as approved,
              w.client_id = ${clientId}::uuid as own, w.seed_likes,
              (select count(*) from likes l where l.wish_id = w.id) as actual,
              exists (select 1 from likes l where l.wish_id = w.id and l.client_id = ${clientId}::uuid) as liked
@@ -68,6 +70,7 @@ export async function POST(request) {
             select w.id, ${clientId}::uuid, ${ip}::text from wishes w
              where w.id = ${wishId}::bigint
                and w.moderation_status = 'approved' and w.approved_at is not null
+               and w.is_private = false
                and w.client_id <> ${clientId}::uuid
                and (select count(*) from likes
                      where ip_hash = ${ip}::text and created_at > now() - interval '1 hour') < ${IP_PER_HOUR}::int

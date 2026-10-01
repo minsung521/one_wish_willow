@@ -4,6 +4,7 @@
 //   200 { wish: null, email_submitted }   no wish under this client_id
 //   200 { wish: { id, text, status, likes, like_count }, email_submitted }
 //     status:     'approved' | 'pending' | 'rejected' (a hidden wish reads as rejected)
+//                 | 'private' (kept private by its maker, MIN-194, whatever its review)
 //     likes:      what the wish shows (real + seed_likes); null unless approved
 //     like_count: the real likes alone, for analytics; null unless approved
 //     email_submitted: an email for this client_id is in social_interest (MIN-158)
@@ -24,7 +25,7 @@ export async function GET(request) {
   try {
     const sql = neon(DATABASE_URL);
     const [wishes, emails] = await Promise.all([
-      sql`select w.id, w.wish_text, w.moderation_status, w.approved_at, w.seed_likes,
+      sql`select w.id, w.wish_text, w.moderation_status, w.approved_at, w.is_private, w.seed_likes,
                  (select count(*) from likes l where l.wish_id = w.id) as actual
             from wishes w where w.client_id = ${clientId}::uuid
             order by w.created_at desc limit 1`,
@@ -33,8 +34,10 @@ export async function GET(request) {
     const emailSubmitted = emails.length > 0;
     const w = wishes[0];
     if (!w) return reply(200, { wish: null, email_submitted: emailSubmitted });
-    const approved = w.moderation_status === 'approved' && w.approved_at !== null;
-    const status = approved ? 'approved' : w.moderation_status === 'pending' ? 'pending' : 'rejected';
+    // a private wish is never on the feed, so it is never shown as approved
+    const approved = w.moderation_status === 'approved' && w.approved_at !== null && w.is_private !== true;
+    const status = w.is_private === true ? 'private'
+      : approved ? 'approved' : w.moderation_status === 'pending' ? 'pending' : 'rejected';
     const actual = toCount(w.actual);
     return reply(200, {
       wish: {

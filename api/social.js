@@ -49,7 +49,8 @@ export async function GET(request) {
 }
 
 /**
- * The feed with likes. Approved wishes only, never the visitor's own. Three
+ * The feed with likes. Approved wishes only, never a private one (MIN-194,
+ * filtered in both queries) and never the visitor's own. Three
  * orders of the same wishes (most liked, a shuffle, newest) are drawn from in
  * turn, like -> random -> latest -> like..., each taking its next wish not
  * already drawn, and every wish says which of them it came from (`slot`).
@@ -74,6 +75,7 @@ async function mixed(databaseUrl, params) {
           coalesce(bool_or(l.client_id = ${clientId}::uuid), false) as liked
         from wishes w left join likes l on l.wish_id = w.id
        where w.moderation_status = 'approved' and w.approved_at is not null
+         and w.is_private = false
          and w.client_id <> ${clientId}::uuid
        group by w.id`;
     const all = rows.map((r) => ({
@@ -93,7 +95,8 @@ async function mixed(databaseUrl, params) {
     if (page.length) {
       const found = await sql`select id, wish_text from wishes
         where id = any(${page.map((p) => p.item.id)}::bigint[])
-          and moderation_status = 'approved' and approved_at is not null`;
+          and moderation_status = 'approved' and approved_at is not null
+          and is_private = false`;
       for (const r of found) texts.set(Number(r.id), r.wish_text);
     }
     return reply(200, {

@@ -26,6 +26,7 @@ PASS  [m] my wish card: "Less" folds it
 PASS  [m] every wish has a heart and a number only
 PASS  [m] the first wish is the most liked (12)  (12)
 PASS  [m] two pages: all 30 others, none twice
+PASS  [m] an approved but private wish (MIN-194) is not in the feed
 PASS  [m] rows: heart on the right, at least 44×44, centred on the first line  ({"right":true,"w":60.046875,"h":44,"off":0.009374999999977263})
 PASS  [m] "line one…": cut to 3 lines, the text itself untouched (line breaks kept)  ({"can":true,"more":"More","expanded":"false","upright":"normal","lines":3})
 PASS  [m] "line one…": "More" shows all of it, then reads "Less"  (8 lines)
@@ -41,7 +42,7 @@ PASS  [m] wishes of three lines or less get no "More"  (25 short)
 PASS  [m] like: +1 at once, pressed
 PASS  [m] like: the little beat runs
 PASS  [m] like: one row in likes
-PASS  [m] wish_liked: wish_id, position 2, slot random  ({"wish_id":10,"position":2,"slot":"random"})
+PASS  [m] wish_liked: wish_id, position 2, slot random  ({"wish_id":28,"position":2,"slot":"random"})
 PASS  [m] two quick taps: still liked, still one row
 PASS  [m] offline unlike: shown at once…
 PASS  [m] …then back to liked, count restored
@@ -69,13 +70,17 @@ PASS  [m] my_wish_viewed: pending
 PASS  [m] pending: nothing stored for the increase
 PASS  [m] approved, 0 likes: toast has only the button
 PASS  [m] approved, 0 likes: the card shows a faint ♥ 0
+PASS  [m] private: toast has only the button
+PASS  [m] private card: "Only you can see this for now.", no count
+PASS  [m] my_wish_viewed: status private, no counts  ({"status":"private","like_count":null,"display_like_count":null,"like_delta":null})
+PASS  [m] private: revisit_toast_shown without a count
 PASS  [m] no wish found: no toast
-PASS  [m] wish screen → feed: up within 200 ms  (88 ms)
+PASS  [m] wish screen → feed: up within 200 ms  (77 ms)
 PASS  [m] wish screen → feed: no errors
 PASS  [m] wish screen → feed: no request for a wish that isn't made yet  (/api/social)
 PASS  [m] wish screen: entry input_screen, has_my_wish false
 PASS  [m] no wish yet: no card
-PASS  [m] wish screen → feed, CPU ×4: up within 200 ms  (77 ms)
+PASS  [m] wish screen → feed, CPU ×4: up within 200 ms  (168 ms)
 PASS  [m] wish screen → feed, CPU ×4: still no errors
 PASS  [m] the draft is still there after the feed
 PASS  [m] the ending is as it was: lines, Share, no likes toast  ({"main":"Wait up to 24 hours for your wish to come true.","sub":"After granting your wish, the One Wish Willow™ loses its magical properties.","toast":false,"share":"Share","others":"See others' wishes"})
@@ -115,6 +120,7 @@ PASS  [d] my wish card: the wish fits its one line, so no tap to open
 PASS  [d] every wish has a heart and a number only
 PASS  [d] the first wish is the most liked (12)  (12)
 PASS  [d] two pages: all 30 others, none twice
+PASS  [d] an approved but private wish (MIN-194) is not in the feed
 PASS  [d] rows: heart on the right, at least 44×44, centred on the first line  ({"right":true,"w":60.046875,"h":44,"off":0.009374999999977263})
 PASS  [d] "line one…": cut to 3 lines, the text itself untouched (line breaks kept)  ({"can":true,"more":"More","expanded":"false","upright":"normal","lines":3})
 PASS  [d] "line one…": "More" shows all of it, then reads "Less"  (8 lines)
@@ -125,7 +131,7 @@ PASS  [d] wishes of three lines or less get no "More"  (25 short)
 PASS  [d] like: +1 at once, pressed
 PASS  [d] like: the little beat runs
 PASS  [d] like: one row in likes
-PASS  [d] wish_liked: wish_id, position 2, slot random  ({"wish_id":3,"position":2,"slot":"random"})
+PASS  [d] wish_liked: wish_id, position 2, slot random  ({"wish_id":22,"position":2,"slot":"random"})
 PASS  [d] two quick taps: still liked, still one row
 PASS  [d] offline unlike: shown at once…
 PASS  [d] …then back to liked, count restored
@@ -153,13 +159,17 @@ PASS  [d] my_wish_viewed: pending
 PASS  [d] pending: nothing stored for the increase
 PASS  [d] approved, 0 likes: toast has only the button
 PASS  [d] approved, 0 likes: the card shows a faint ♥ 0
+PASS  [d] private: toast has only the button
+PASS  [d] private card: "Only you can see this for now.", no count
+PASS  [d] my_wish_viewed: status private, no counts  ({"status":"private","like_count":null,"display_like_count":null,"like_delta":null})
+PASS  [d] private: revisit_toast_shown without a count
 PASS  [d] no wish found: no toast
 PASS  [d] wish screen → feed: up within 200 ms  (80 ms)
 PASS  [d] wish screen → feed: no errors
 PASS  [d] wish screen → feed: no request for a wish that isn't made yet  (/api/social)
 PASS  [d] wish screen: entry input_screen, has_my_wish false
 PASS  [d] no wish yet: no card
-PASS  [d] wish screen → feed, CPU ×4: up within 200 ms  (40 ms)
+PASS  [d] wish screen → feed, CPU ×4: up within 200 ms  (48 ms)
 PASS  [d] wish screen → feed, CPU ×4: still no errors
 PASS  [d] the draft is still there after the feed
 PASS  [d] the ending is as it was: lines, Share, no likes toast  ({"main":"Wait up to 24 hours for your wish to come true.","sub":"After granting your wish, the One Wish Willow™ loses its magical properties.","toast":false,"share":"Share","others":"See others' wishes"})
@@ -173,4 +183,4 @@ PASS  [d] switch off: the feed reads the same as main
 PASS  [d] switch off: the same requests as main
 PASS  [d] switch off: the same feed event as main
 
-170/170 passed
+180/180 passed

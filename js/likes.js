@@ -204,7 +204,7 @@ export function makeExpandable(els) {
  * The visitor's own wish, pinned at the top of the feed on a faint panel (no
  * outline): a small "Your wish" label, the wish itself on up to three lines
  * (More for the rest), and on the right "Received ♥ 12" with "+3 new", so
- * it doesn't read as a heart they pressed. Not approved: "Only you can see
+ * it doesn't read as a heart they pressed. Not approved, or private (MIN-194): "Only you can see
  * this for now." beside the label and no number. Under it, unless an email
  * is already in for this client_id, a small "Get notified" that opens the
  * email form in place (MIN-158's storage and notice).
@@ -262,7 +262,8 @@ export function renderMyWish(root, data, screen) {
   root.hidden = false;
   makeExpandable([text]);
 
-  track('my_wish_viewed', { status: approved ? 'approved' : 'pending', ...countProps(wish, delta) });
+  const status = approved ? 'approved' : wish.status === 'private' ? 'private' : 'pending';
+  track('my_wish_viewed', { status, ...countProps(wish, delta) });
 }
 
 /**
@@ -385,7 +386,7 @@ function emailAsk(screen) {
 /**
  * On the revisit screen only, once the visitor's own wish is known:
  * "Your wish got ♥ 12  +3 new" and the way to the feed. With no likes yet
- * (or not approved), only the button. It stays until closed (×) and sits at
+ * (or not approved, or private), only the button. It stays until closed (×) and sits at
  * the top, clear of the lines in the middle and of Share at the bottom.
  */
 export class RevisitToast {
