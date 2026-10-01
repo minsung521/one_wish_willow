@@ -884,13 +884,19 @@ function render3D() {
   stage.showStick(pose, stickLen(), showStick);
   if (pieces.length) stage.showHalves(pieces.map((p) => p.originPose()), L, pieces.map((p) => p.spin || 0));
   drawBox();
-  stage.setGain(halvesGain);
-  if (likesOn && STILL_PHASES.has(phase)) {
-    // likes on (MIN-160): the halves lie still here, so the 3D frame is
-    // rendered again only when something in it changes and copied from a 2D
-    // cache otherwise. Re-rendering and copying WebGL every frame kept the
-    // main thread busy enough to hold up taps on these screens.
-    const key = stillKey();
+  const still3D = STILL_PHASES.has(phase);
+  // There the halves' gain still eases up to FINAL_GAIN for some 15-20 s. In
+  // steps of 0.02 (about one 8-bit level, under the room's fade, too little to
+  // see) the cache holds between them instead of missing on every frame.
+  // 1 and FINAL_GAIN are both steps, so where it settles is exact.
+  const gain = still3D ? Math.round(halvesGain * 50) / 50 : halvesGain;
+  stage.setGain(gain);
+  if (still3D) {
+    // The halves lie still here, so the 3D frame is rendered again only when
+    // something in it changes and copied from a 2D cache otherwise.
+    // Re-rendering and copying WebGL every frame kept the main thread busy
+    // enough to hold up taps on these screens (MIN-160, MIN-195).
+    const key = stillKey(gain);
     if (key !== still.key) {
       stage.render();
       if (still.cv.width !== stage.canvas.width || still.cv.height !== stage.canvas.height) {
@@ -915,12 +921,12 @@ function render3D() {
 const STILL_PHASES = new Set(['wish', 'done', 'already']);
 const still = { key: null, cv: document.createElement('canvas') };
 /** Everything the 3D frame depends on there; a change means rendering it again. */
-function stillKey() {
+function stillKey(gain) {
   const poses = pieces.map((p) => {
     const o = p.originPose();
     return `${o.x.toFixed(2)},${o.y.toFixed(2)},${o.ang.toFixed(4)},${(p.spin || 0).toFixed(4)}`;
   });
-  return `${W}x${H}@${dpr}|${stage.canvas.width}x${stage.canvas.height}|${halvesGain.toFixed(3)}|${L.toFixed(2)}|${poses.join(';')}`;
+  return `${W}x${H}@${dpr}|${stage.canvas.width}x${stage.canvas.height}|${gain.toFixed(2)}|${L.toFixed(2)}|${poses.join(';')}`;
 }
 
 /** A hairline crack opening from the side under tension. */
@@ -1296,8 +1302,8 @@ async function boot() {
     const dt = Math.min(MAX_FRAME_DT, Math.max(0, (now - last) / 1000));
     last = now;
     update(dt);
-    // likes on (MIN-160): nothing is drawn while the feed covers the whole stage
-    if (!(likesOn && social.covering)) render();
+    // nothing is drawn while the feed covers the whole stage (MIN-195)
+    if (!social.covering) render();
     if (!readyAt) {
       // the stage (box or broken halves) is on screen for the first time
       readyAt = performance.now();
