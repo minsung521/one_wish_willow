@@ -21,6 +21,7 @@ export class WishUI {
     this.focused = false;
     this.root = document.getElementById('wish');
     this.input = document.getElementById('wish-input');
+    this.privateBox = document.getElementById('wish-private');
     this.count = document.getElementById('wish-count');
     this.btn = document.getElementById('wish-hold');
     this.fill = document.getElementById('hold-fill');
@@ -234,7 +235,7 @@ export class WishUI {
     this.input.readOnly = true;
     this.btn.disabled = true;
     this.input.blur();
-    this.onConfirm(text);
+    this.onConfirm(text, !!(this.privateBox && this.privateBox.checked));
   }
 
   /** Begin the burn. Calls onDone when the last ember is gone. */

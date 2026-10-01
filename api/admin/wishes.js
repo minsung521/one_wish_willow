@@ -3,7 +3,7 @@
 // approved here, one by one. Needs the admin session (api/admin/session.js).
 //
 // GET ?status=pending|approved|rejected|hidden&before=<id>
-//   -> 200 { wishes: [{ id, text, status, created_at, reviewed_at, approved_at }],
+//   -> 200 { wishes: [{ id, text, status, is_private, created_at, reviewed_at, approved_at }],
 //            next: id | null, counts: { pending, approved, rejected, hidden } }
 //   Newest first, 20 at a time; pass `next` back as `before` for more.
 //
@@ -15,7 +15,7 @@
 //   -> 200 { wish, unchanged: true }         it already had that status (a double click)
 //   -> 409 { status: 'conflict', wish }      someone else moved it first
 //   -> 404 { status: 'not_found' }, 400 { status: 'invalid' | 'invalid_transition' }
-//   `wish` here is { id, status, created_at, reviewed_at, approved_at }, without the text.
+//   `wish` here is { id, status, is_private, created_at, reviewed_at, approved_at }, without the text.
 //
 // Approving sets approved_at and reviewed_at to now(); rejecting or hiding sets
 // reviewed_at to now() and approved_at to NULL (the table's constraint holds the
@@ -55,7 +55,7 @@ export async function GET(request) {
     const sql = neon(process.env.DATABASE_URL);
     const before = raw === null ? Number.MAX_SAFE_INTEGER : Number(raw);
     const [rows, totals] = await Promise.all([
-      sql`select id, wish_text, moderation_status, created_at, reviewed_at, approved_at from wishes
+      sql`select id, wish_text, moderation_status, is_private, created_at, reviewed_at, approved_at from wishes
           where moderation_status = ${status} and id < ${before}
           order by id desc limit ${PAGE + 1}`,
       sql`select moderation_status, count(*)::int as n from wishes group by moderation_status`,
@@ -92,10 +92,10 @@ export async function PATCH(request) {
             reviewed_at = now(),
             approved_at = case when ${to}::text = 'approved' then now() else null end
         where id = ${id} and moderation_status = ${from}::text
-        returning id, moderation_status, created_at, reviewed_at, approved_at`;
+        returning id, moderation_status, is_private, created_at, reviewed_at, approved_at`;
     if (rows.length) return reply(200, { wish: meta(rows[0]) });
 
-    const now = await sql`select id, moderation_status, created_at, reviewed_at, approved_at
+    const now = await sql`select id, moderation_status, is_private, created_at, reviewed_at, approved_at
         from wishes where id = ${id}`;
     if (!now.length) return reply(404, { status: 'not_found' });
     const wish = meta(now[0]);
@@ -119,6 +119,7 @@ function meta(row) {
   return {
     id: Number(row.id),
     status: row.moderation_status,
+    is_private: row.is_private === true,
     created_at: iso(row.created_at),
     reviewed_at: iso(row.reviewed_at),
     approved_at: iso(row.approved_at),

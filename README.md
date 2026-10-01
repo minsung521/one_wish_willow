@@ -158,7 +158,9 @@ With it on:
 - The wish screen gets a small *See others' wishes* link under the fine print, for someone who snapped the stick but hasn't made the wish. The feed covers the screen; Back or Escape closes it and the field still holds what they were writing. It goes away once the wish is made.
 - The feed is one scrolled column: each wish set like the visitor's own (italic, cream, centred, line breaks kept), a small ember between them, 20 at a time with *See more wishes*. Loading, *No wishes to show yet*, and *Couldn't load wishes* with *Try again* (also for a failed second page). Wishes are set as text, never HTML, and the list carries `ph-no-capture ph-mask`. It covers the stage completely, so the model (and its credit) isn't on screen while it is open; its footer keeps the anonymity and fan-made lines.
 
-**Moderation.** Every wish is stored `pending` (`wishes.moderation_status`, `db/2026-09-29-social-approval.sql`). Only the maker, one by one, makes a wish public; nothing is approved automatically. The public feed returns `moderation_status = 'approved' and approved_at is not null` only.
+**Moderation.** Every wish is stored `pending` (`wishes.moderation_status`, `db/2026-09-29-social-approval.sql`). Only the maker, one by one, makes a wish public; nothing is approved automatically. The public feed returns `moderation_status = 'approved' and approved_at is not null` only and `is_private = false`.
+
+**Private wishes (MIN-194).** The "Keep my wish private" box under the field sends `is_private` with the wish (`wishes.is_private`, default `false`, `db/2026-10-01-wish-is-private.sql`; anything other than a real `true` is stored as `false`). It is independent of moderation: a private wish can be approved in the admin (shown with a `Private` badge) but the feed query excludes it. The migration must be run on Neon by hand before deploying this code.
 
 | API | |
 |---|---|

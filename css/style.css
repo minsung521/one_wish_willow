@@ -454,6 +454,48 @@ body {
 }
 .wish-count.on { opacity: 1; }
 
+/* MIN-194: one quiet line under the field. No box, no card; the whole label is
+   the tap target (min 44px high) while the box itself stays small. */
+.wish-private {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 44px;
+  margin: 14px auto 0;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(220, 217, 200, 0.34);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  opacity: 0;
+  transition: opacity 1.8s ease, color 0.4s ease;
+}
+.wish.field-on .wish-private { opacity: 1; }
+.wish-private:hover, .wish-private:has(input:checked) { color: rgba(220, 217, 200, 0.6); }
+.wish-private input {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  border: 1px solid rgba(220, 217, 200, 0.34);
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+}
+.wish-private input:checked {
+  border-color: rgba(232, 184, 119, 0.7);
+  background: rgba(232, 184, 119, 0.55);
+}
+.wish-private input:focus-visible { outline: 1px solid var(--ink-soft); outline-offset: 3px; }
+
 /* The Hold button, at the foot of the screen under the broken halves. It only
    shows once there is a wish and, on a phone, the keyboard is down (js/wish.js). */
 .hold {
@@ -548,6 +590,7 @@ body {
 .wish.leaving .wish-line,
 .wish.leaving .hold,
 .wish.leaving .wish-note,
+.wish.leaving .wish-private,
 .wish.leaving .wish-count {
   opacity: 0 !important;
   transition: opacity 1.4s ease;

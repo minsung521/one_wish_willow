@@ -267,6 +267,12 @@ function card(w) {
   badge.className = `badge ${w.status}`;
   badge.textContent = LABEL[w.status];
   meta.append(id, time, badge);
+  if (w.is_private) {
+    const priv = document.createElement('span');
+    priv.className = 'badge private';
+    priv.textContent = 'Private';
+    meta.append(priv);
+  }
   if (w.status === 'approved' && w.approved_at) {
     const at = document.createElement('span');
     at.className = 'sub';

@@ -184,6 +184,49 @@ const row = async (id) => (await db.query('select moderation_status s, reviewed_
   check('public GET bad cursor: 400', (await call('GET', '/api/social?before=abc')).status === 400);
 }
 
+// ---------------------------------------------------------------- private wishes (MIN-194)
+{
+  const post = (extra) => call('POST', '/api/wish', {
+    xff: `203.0.113.${Math.floor(Math.random() * 200) + 1}`,
+    body: { wish_text: `private-test ${extra.tag}`, client_id: randomUUID(), ...extra.body },
+  });
+  const flag = async (tag) =>
+    (await db.query('select id::int as id, is_private from wishes where wish_text = $1', [`private-test ${tag}`])).rows[0];
+  const inFeed = async (id) => {
+    let next = null;
+    do {
+      const r = await call('GET', `/api/social${next ? `?before=${next}` : ''}`);
+      if (r.json.wishes.some((w) => w.id === id)) return true;
+      next = r.json.next;
+    } while (next);
+    return false;
+  };
+
+  check('POST is_private=true: 201, stored true', (await post({ tag: 'T', body: { is_private: true } })).status === 201 && (await flag('T')).is_private === true);
+  check('POST is_private=false: stored false', (await post({ tag: 'F', body: { is_private: false } })).status === 201 && (await flag('F')).is_private === false);
+  check('POST without is_private (old client): stored false', (await post({ tag: 'M', body: {} })).status === 201 && (await flag('M')).is_private === false);
+  for (const [tag, v] of [['S', 'true'], ['N', 1], ['X', 'yes'], ['Z', null], ['O', { a: 1 }]]) {
+    const r = await post({ tag, body: { is_private: v } });
+    check(`POST is_private=${JSON.stringify(v)}: 201, normalised to false`, r.status === 201 && (await flag(tag)).is_private === false);
+  }
+
+  const pub = await flag('F');
+  const priv = await flag('T');
+  check('public candidate, pending: not in feed', !(await inFeed(pub.id)));
+  check('private, pending: not in feed', !(await inFeed(priv.id)));
+  check('admin approves the public candidate: in feed', (await patch(pub.id, 'pending', 'approved')).status === 200 && await inFeed(pub.id));
+  const ap = await patch(priv.id, 'pending', 'approved');
+  check('admin approves the private wish: 200, status approved', ap.status === 200 && ap.json.wish.status === 'approved' && ap.json.wish.is_private === true);
+  check('private + approved: NOT in public feed', !(await inFeed(priv.id)));
+  check('admin list shows is_private',
+    (await call('GET', '/api/admin/wishes?status=approved', { cookie })).json.wishes.some((w) => w.id === priv.id && w.is_private === true)
+    && (await call('GET', '/api/admin/wishes?status=approved', { cookie })).json.wishes.some((w) => w.id === pub.id && w.is_private === false));
+  check('hide the public one: gone from feed at once', (await patch(pub.id, 'approved', 'hidden')).status === 200 && !(await inFeed(pub.id)));
+  check('rejected wishes stay out too', (await patch((await flag('M')).id, 'pending', 'rejected')).status === 200 && !(await inFeed((await flag('M')).id)));
+  const { rows } = await db.query("select count(*)::int n from wishes where is_private and moderation_status = 'approved'");
+  check('private approved wishes exist in DB but none leak', rows[0].n >= 1 && !(await call('GET', '/api/social')).json.wishes.some((w) => w.id === priv.id));
+}
+
 // ---------------------------------------------------------------- logout, rate limit
 {
   const out = await call('DELETE', '/api/admin/session', { cookie });

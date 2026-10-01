@@ -41,6 +41,23 @@ PASS  6 simultaneous approvals of #3: exactly 1 applies, 5 unchanged  (1/5)
 PASS  approve vs reject of #4 at once: one 200, one 409, DB consistent  (200,409 -> approved)
 PASS  public pages: 20 + 5 of 25 approved, no repeats, next null at the end
 PASS  public GET bad cursor: 400
+PASS  POST is_private=true: 201, stored true
+PASS  POST is_private=false: stored false
+PASS  POST without is_private (old client): stored false
+PASS  POST is_private="true": 201, normalised to false
+PASS  POST is_private=1: 201, normalised to false
+PASS  POST is_private="yes": 201, normalised to false
+PASS  POST is_private=null: 201, normalised to false
+PASS  POST is_private={"a":1}: 201, normalised to false
+PASS  public candidate, pending: not in feed
+PASS  private, pending: not in feed
+PASS  admin approves the public candidate: in feed
+PASS  admin approves the private wish: 200, status approved
+PASS  private + approved: NOT in public feed
+PASS  admin list shows is_private
+PASS  hide the public one: gone from feed at once
+PASS  rejected wishes stay out too
+PASS  private approved wishes exist in DB but none leak
 PASS  logout: 200, cookie cleared
 PASS  logout from another origin: 403
 PASS  5 wrong passwords, then 429 with Retry-After (even for the right one)  (401,401,401,401,401,429)
@@ -51,4 +68,4 @@ PASS  no ADMIN_PASSWORD_HASH: admin list 404 closed
 PASS  no ADMIN_PASSWORD_HASH: login 404 closed
 PASS  ADMIN_SESSION_SECRET under 32 characters: admin 404
 
-52/52 passed
+69/69 passed

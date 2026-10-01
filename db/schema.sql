@@ -16,6 +16,7 @@ create table wishes (
   moderation_status text        not null default 'pending',
   reviewed_at       timestamptz,
   approved_at       timestamptz,
+  is_private        boolean     not null default false, -- MIN-194: never on the public feed
   constraint wishes_moderation_status_check check (
     moderation_status in ('pending', 'approved', 'rejected', 'hidden')
   ),

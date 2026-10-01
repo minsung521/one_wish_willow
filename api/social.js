@@ -2,7 +2,9 @@
 //
 // Only wishes the maker approved one by one (MIN-123/MIN-183) are readable:
 // moderation_status = 'approved' and approved_at set, newest approval target
-// first, 20 at a time. Pending, rejected and hidden wishes never leave here.
+// first, 20 at a time. Pending, rejected and hidden wishes never leave here, and neither does a
+// wish its maker kept private (is_private, MIN-194), approved or not: that is
+// filtered in the query, never by the client.
 // The server gate SOCIAL_ENABLED defaults closed, independently of the page's
 // own switch. Nothing but an error code is ever logged.
 import { neon } from '@neondatabase/serverless';
@@ -21,7 +23,8 @@ export async function GET(request) {
     const sql = neon(databaseUrl);
     const before = raw === null ? Number.MAX_SAFE_INTEGER : Number(raw);
     const rows = await sql`select id, wish_text from wishes
-      where moderation_status = 'approved' and approved_at is not null and id < ${before}
+      where moderation_status = 'approved' and approved_at is not null
+        and is_private = false and id < ${before}
       order by id desc limit ${PAGE + 1}`;
     const page = rows.slice(0, PAGE);
     return reply(200, {
