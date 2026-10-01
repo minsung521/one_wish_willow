@@ -86,7 +86,7 @@ async function context(device, { social = true, record = null } = {}) {
   await ctx.route('**/js/config.js', async (r) => {
     const res = await r.fetch();
     const text = await res.text();
-    r.fulfill({ response: res, body: social ? text.replace('SOCIAL_ENABLED = false', 'SOCIAL_ENABLED = true') : text });
+    r.fulfill({ response: res, body: text.replace(/export const SOCIAL_ENABLED = (true|false);/, `export const SOCIAL_ENABLED = ${!!social};`) });
   });
   if (record) {
     await ctx.addInitScript((rec) => {
@@ -143,10 +143,27 @@ async function wishFlow(device, tag) {
     check(`[${tag}] private checkbox: one line of small text`,
       await page.evaluate(() => { const el = document.querySelector('.wish-private span'); return el.getClientRects().length === 1 && parseFloat(getComputedStyle(el).fontSize) <= 12; }));
   }
+  const mark = () => page.evaluate(() => {
+    const cs = getComputedStyle(document.getElementById('wish-private'), '::after');
+    return cs.content !== 'none' && parseFloat(cs.width) > 0;
+  });
+  check(`[${tag}] private checkbox: no check mark while unchecked`, !(await mark()));
   await tap(page, '.wish-private span', device);
+  check(`[${tag}] private checkbox: check mark shows when checked`, await mark());
   check(`[${tag}] private checkbox: the label toggles it`, await page.isChecked('#wish-private'));
   await page.waitForTimeout(500);
   await shot(page, `${tag}-01b-wish-screen-private`);
+  await page.locator('#wish-private').screenshot({ path: join(OUT, `${tag}-01c-private-checkbox-checked.png`) }).catch(() => {});
+  if (!device.hasTouch) {
+    await page.keyboard.press('Shift');
+    await page.focus('#wish-private');
+    check(`[${tag}] private checkbox: keyboard focus-visible ring`,
+      await page.evaluate(() => document.getElementById('wish-private').matches(':focus-visible')));
+    await page.keyboard.press('Space');
+    check(`[${tag}] private checkbox: Space toggles it`, !(await page.isChecked('#wish-private')));
+    await page.keyboard.press('Space');
+    await page.evaluate(() => document.activeElement && document.activeElement.blur());
+  }
 
   // 0 approved: the empty state
   await tap(page, '#wish-others', device);

@@ -489,10 +489,22 @@ body {
   border-radius: 3px;
   background: transparent;
   cursor: pointer;
+  position: relative;
 }
 .wish-private input:checked {
   border-color: rgba(232, 184, 119, 0.7);
   background: rgba(232, 184, 119, 0.55);
+}
+.wish-private input:checked::after {
+  content: "";
+  position: absolute;
+  left: 3.5px;
+  top: 0.5px;
+  width: 3px;
+  height: 6.5px;
+  border: solid #1a1612;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
 }
 .wish-private input:focus-visible { outline: 1px solid var(--ink-soft); outline-offset: 3px; }
 

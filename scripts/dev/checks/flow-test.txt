@@ -2,6 +2,8 @@ PASS  [m] wish screen shows "See others' wishes"
 PASS  [m] private checkbox: unchecked by default
 PASS  [m] private checkbox: under the field, inside the screen, tap target >= 44px  (118,400 155x44)
 PASS  [m] private checkbox: one line of small text
+PASS  [m] private checkbox: no check mark while unchecked
+PASS  [m] private checkbox: check mark shows when checked
 PASS  [m] private checkbox: the label toggles it
 PASS  [m] feed opens from the wish screen
 PASS  [m] 0 approved: empty message
@@ -34,8 +36,8 @@ PASS  [m] a failed second page keeps the first 20 and offers Try again
 PASS  [m] Try again loads the rest
 PASS  [m] server switch off (404): error state, no wishes
 PASS  [m] a hidden wish is gone from the feed
-FAIL  [m] SOCIAL_ENABLED off: the email dialog opens, not the feed
-FAIL  [m] SOCIAL_ENABLED off: no link on the wish screen
+PASS  [m] SOCIAL_ENABLED off: the email dialog opens, not the feed
+PASS  [m] SOCIAL_ENABLED off: no link on the wish screen
 PASS  [m] admin: not logged in -> login form, no list
 PASS  [m] admin: wrong password -> message
 PASS  [m] admin: password not in storage, JS-readable cookies or URL
@@ -69,9 +71,13 @@ PASS  [m] admin: no analytics or third-party requests
 PASS  [m] admin: no page errors
 PASS  [d] wish screen shows "See others' wishes"
 PASS  [d] private checkbox: unchecked by default
-PASS  [d] private checkbox: under the field, inside the screen, tap target >= 44px  (563,424 155x44)
+PASS  [d] private checkbox: under the field, inside the screen, tap target >= 44px  (561,421 157x44)
 PASS  [d] private checkbox: one line of small text
+PASS  [d] private checkbox: no check mark while unchecked
+PASS  [d] private checkbox: check mark shows when checked
 PASS  [d] private checkbox: the label toggles it
+PASS  [d] private checkbox: keyboard focus-visible ring
+PASS  [d] private checkbox: Space toggles it
 PASS  [d] feed opens from the wish screen
 PASS  [d] 0 approved: empty message
 PASS  [d] focus starts on Back
@@ -134,4 +140,4 @@ PASS  [d] logout ok: after a reload, the login screen
 PASS  [d] admin: no analytics or third-party requests
 PASS  [d] admin: no page errors
 
-133/135 passed
+141/141 passed
