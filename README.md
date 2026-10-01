@@ -160,7 +160,7 @@ With it on:
 
 **Moderation.** Every wish is stored `pending` (`wishes.moderation_status`, `db/2026-09-29-social-approval.sql`). Only the maker, one by one, makes a wish public; nothing is approved automatically. The public feed returns `moderation_status = 'approved' and approved_at is not null` only and `is_private = false`.
 
-**Private wishes (MIN-194).** The "Keep my wish private" box under the field sends `is_private` with the wish (`wishes.is_private`, default `false`, `db/2026-10-01-wish-is-private.sql`; anything other than a real `true` is stored as `false`). It is independent of moderation: a private wish can be approved in the admin (shown with a `Private` badge) but the feed query excludes it. The migration must be run on Neon by hand before deploying this code.
+**Private wishes (MIN-194).** The "Keep my wish private" box under the field sends `is_private` with the wish (`wishes.is_private`, default `false`, `db/2026-10-01-wish-is-private.sql`; anything other than a real `true` is stored as `false`). It is independent of moderation: a private wish can be approved in the admin (shown with a `Private` badge) but the feed query excludes it. The migration has been applied to the production Neon database; a fresh database gets the column from `db/schema.sql`.
 
 | API | |
 |---|---|
