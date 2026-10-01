@@ -9,7 +9,7 @@ export const POSTHOG_HOST = 'https://us.i.posthog.com';
 // its own commit, so this is set by hand when releasing: the short hash of the
 // commit that changed the app. (Stored wishes get the deployed commit from the
 // server; this value is only their fallback.)
-export const APP_VERSION = 'ffd6e82';
+export const APP_VERSION = '36d05ff';
 
 // Where the wish is kept (api/wish.js).
 export const WISH_API = '/api/wish';
@@ -21,6 +21,14 @@ export const INTEREST_API = '/api/interest';
 // server-side SOCIAL_ENABLED gate are ready for public access.
 export const SOCIAL_ENABLED = true;
 export const SOCIAL_API = '/api/social';
+
+// MIN-160 likes switch, off: hearts in the feed, the visitor's own wish
+// pinned at its top, and the toast on the revisit screen. Needs SOCIAL_ENABLED.
+// The server has its own, the LIKES_ENABLED=true environment variable; with
+// either off, the feed and the revisit screen stay as they were.
+export const LIKES_ENABLED = true;
+export const LIKE_API = '/api/like';
+export const MY_WISH_API = '/api/my-wish';
 
 // The box's opening jingle. Set to null to drop the recorded file and use
 // the synthesised jingle in js/audio.js instead (e.g. if the film audio

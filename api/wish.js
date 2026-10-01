@@ -9,8 +9,8 @@
 // most 20 an hour per ip_hash, loose enough for a school or a café sharing
 // one address. Both answer 429 {"status":"rate_limited"}.
 
-import { createHash } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
+import { ipHash } from './_lib/likes.js';
 
 const MAX_WISH = 140; // the input's maxlength, counted the same way (UTF-16 units)
 const MAX_BODY = 8192; // a full wish and its metadata is well under 1 KB
@@ -125,18 +125,6 @@ function origin(v) {
   } catch {
     return null;
   }
-}
-
-/**
- * SHA-256 of the IP, a secret and today's UTC date. The same address hashes
- * differently every day, so it can't be followed from one day to the next,
- * and the raw IP is never stored.
- */
-function ipHash(headers, secret) {
-  const ip = (headers.get('x-forwarded-for') || '').split(',')[0].trim();
-  if (!ip) return null;
-  const day = new Date().toISOString().slice(0, 10);
-  return createHash('sha256').update(ip + secret + day).digest('hex');
 }
 
 /** A Postgres SQLSTATE or the error's class name, never its message. */

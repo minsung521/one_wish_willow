@@ -1,0 +1,5 @@
+{
+  "viewport": "390x844, DPR 2, touch; the feed opened from the revisit screen, approved card, scrolled to the top",
+  "before": { "wishes_started_on_first_screen": 2, "wishes_whole_on_first_screen": 1, "card_px": 310, "average_row_px": 156 },
+  "after": { "wishes_started_on_first_screen": 6, "wishes_whole_on_first_screen": 5, "card_px": 119, "average_row_px": 88 }
+}

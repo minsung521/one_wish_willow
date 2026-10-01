@@ -6,8 +6,9 @@
 //   (env: DATABASE_URL on localhost, ADMIN_TEST_PASSWORD; FONT_DIR optional:
 //    Google Fonts files saved locally, for machines that can't reach them)
 //
-// The page's SOCIAL_ENABLED switch is turned on only inside these browsers, by
-// rewriting js/config.js on its way in; the file itself stays off.
+// The page's SOCIAL_ENABLED switch is set inside these browsers, by rewriting
+// js/config.js on its way in (on, or off for the switch-off checks), whatever
+// the file itself says.
 
 import { mkdir, readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -47,7 +48,7 @@ const MIXED = [
 ];
 
 async function seed(approved) {
-  await db.query('truncate wishes restart identity');
+  await db.query('truncate wishes restart identity cascade');
   const texts = [];
   for (let i = 0; i < 26; i++) texts.push(i < MIXED.length ? MIXED[i] : `TEST approved wish #${i + 1} — test data`);
   for (let i = 0; i < 26; i++) {

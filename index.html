@@ -105,6 +105,13 @@
     <button class="share-btn share-alt" id="others-btn" type="button" aria-haspopup="dialog">See others' wishes</button>
   </div>
 
+  <!-- MIN-160: on the revisit screen, how many people wished for it too (js/likes.js). Behind LIKES_ENABLED -->
+  <div class="likes-toast" id="likes-toast" role="status" hidden>
+    <button class="likes-toast-close" id="likes-toast-close" type="button" aria-label="Close">×</button>
+    <p class="likes-toast-line" id="likes-toast-line" hidden></p>
+    <button class="likes-toast-go" id="likes-toast-go" type="button">See others' wishes</button>
+  </div>
+
   <!-- MIN-158: nothing to see yet; this only asks whether to tell them when there is -->
   <dialog class="interest" id="interest" aria-labelledby="interest-title">
     <div class="interest-card">
@@ -133,6 +140,8 @@
       <p class="social-kicker">One branch. One wish.</p>
       <h2 id="social-title">What did they wish for?</h2>
       <p class="social-intro">A glimpse at what others chose.</p>
+      <!-- MIN-160: the visitor's own wish, pinned (js/likes.js). Behind LIKES_ENABLED -->
+      <div class="social-mine" id="social-mine" hidden></div>
       <ol class="social-list ph-no-capture ph-mask" id="social-list" aria-label="Wishes"></ol>
       <p class="social-status" id="social-status" role="status" aria-live="polite"></p>
       <button class="social-more" id="social-more" type="button" hidden>See more wishes</button>

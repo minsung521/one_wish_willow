@@ -1,0 +1,57 @@
+PASS  like an approved wish: 200, liked, 1  ({"wish_id":1,"liked":true,"likes":1})
+PASS  like it again: still 1 (no duplicate)
+PASS  one row in likes
+PASS  three simultaneous likes: one row
+PASS  unlike: 200, not liked, 0
+PASS  unlike again: still 0
+PASS  own wish: 403 own_wish
+PASS  pending wish: 404
+PASS  rejected wish: 404
+PASS  hidden wish: 404
+PASS  no such wish: 404
+PASS  approved but private (MIN-194): 404 not_found, as unapproved
+PASS  unliking a private wish: no count shown
+PASS  no rows for refused likes
+PASS  bad client_id: 400
+PASS  bad wish_id: 400
+PASS  bad action: 400
+PASS  not JSON: 400
+PASS  6th like on one wish from one address: 429  (200,200,200,200,200,429)
+PASS  another address can still like it
+PASS  likes keep a hashed address, never the raw one
+PASS  display = real + seed_likes (2 + 10)  ({"wish_id":2,"liked":true,"likes":12})
+PASS  my wish, none made: wish null
+PASS  my wish, bad id: 400
+PASS  my wish, approved: text, status, likes = 3 + 4, like_count = 3  ({"wish":{"id":50,"text":"TEST my own wish","status":"approved","likes":7,"like_count":3},"email_submitted":false})
+PASS  my wish: email not submitted yet
+PASS  email via /api/interest: 201
+PASS  my wish: email submitted now
+PASS  my wish, private and approved: status private, no likes shown  ({"id":50,"text":"TEST my own wish","status":"private","likes":null,"like_count":null})
+PASS  my wish, private and pending: status private, no likes shown  ({"id":50,"text":"TEST my own wish","status":"private","likes":null,"like_count":null})
+PASS  my wish, pending: status pending, no likes shown
+PASS  my wish, rejected: status rejected, no likes shown
+PASS  my wish, hidden: status rejected, no likes shown
+PASS  mixed feed answers  (undefined)
+PASS  no duplicates across pages
+PASS  every approved wish but my own, once
+PASS  my own wish is not in it
+PASS  no pending, rejected or hidden wish
+PASS  no approved-but-private wish (MIN-194)
+PASS  the first nine go like, random, latest in turn  (like,random,latest,like,random,latest,like,random,latest)
+PASS  all three pools appear
+PASS  the first like-slot wish is the most liked
+PASS  the first latest-slot wish is the newest not drawn yet
+PASS  liked flag for the asking client
+PASS  each wish carries id, text, likes, liked, slot
+PASS  same seed and time: same order
+PASS  another seed: another shuffle
+PASS  likes after `at` leave the order as it was
+PASS  ...while the count shown is current
+PASS  bad seed: 400
+PASS  bad client_id: 400
+PASS  without client_id: the old answer (newest first, before-cursor)
+PASS  [off] like: 404 closed
+PASS  [off] my wish: 404 closed
+PASS  [off] feed with client_id: the old answer
+
+55/55 passed
