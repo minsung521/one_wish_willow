@@ -1,0 +1,64 @@
+
+== before, likes off
+wish screen → feed: CPU ×1 864 ms [864,872,772], CPU ×4 1407 ms [1407,1256,1518]
+revisit → feed:     CPU ×1 611 ms [611,604,745], CPU ×4 1482 ms [1315,1482,1529]
+frames, wish screen:      117.7 ms (p90 129.1), 3D drawn on 100% of frames
+frames, feed open:        100.3 ms (p90 108.6), 3D drawn on 100% of frames
+frames, revisit (+1.5 s): 106.3 ms (p90 116.4), 3D drawn on 100% of frames
+PASS  [before, likes off] social_feed_opened once, as before  ([{"screen":"wish"}])
+PASS  [before, likes off] focus on Back once the feed is up  (social-back)
+PASS  [before, likes off] Escape: back on the wish screen, the draft kept
+PASS  [before, likes off] no page errors
+
+== after, likes off
+wish screen → feed: CPU ×1 80 ms [80,80,88], CPU ×4 256 ms [256,245,265]
+revisit → feed:     CPU ×1 80 ms [80,73,224], CPU ×4 240 ms [464,200,240]
+frames, wish screen:      16.7 ms (p90 16.9), 3D drawn on 0% of frames
+frames, feed open:        16.7 ms (p90 16.9), 3D drawn on 0% of frames
+frames, revisit (+1.5 s): 25.2 ms (p90 36.7), 3D drawn on 8% of frames
+PASS  [after, likes off] social_feed_opened once, as before  ([{"screen":"wish"}])
+PASS  [after, likes off] focus on Back once the feed is up  (social-back)
+PASS  [after, likes off] Escape: back on the wish screen, the draft kept
+PASS  [after, likes off] no page errors
+
+== before, likes on
+wish screen → feed: CPU ×1 88 ms [81,136,88], CPU ×4 232 ms [296,221,232]
+revisit → feed:     CPU ×1 632 ms [632,576,640], CPU ×4 1136 ms [1136,1184,856]
+frames, wish screen:      16.7 ms (p90 17.3), 3D drawn on 0% of frames
+frames, feed open:        16.7 ms (p90 17.0), 3D drawn on 0% of frames
+frames, revisit (+1.5 s): 134.2 ms (p90 169.6), 3D drawn on 100% of frames
+PASS  [before, likes on] social_feed_opened once, as before  ([{"screen":"wish","entry":"input_screen","has_my_wish":false,"sort":"popular"}])
+PASS  [before, likes on] focus on Back once the feed is up  (social-back)
+PASS  [before, likes on] Escape: back on the wish screen, the draft kept
+PASS  [before, likes on] no page errors
+
+== after, likes on
+wish screen → feed: CPU ×1 88 ms [88,80,112], CPU ×4 253 ms [277,239,253]
+revisit → feed:     CPU ×1 80 ms [80,104,80], CPU ×4 269 ms [257,474,269]
+frames, wish screen:      16.9 ms (p90 17.1), 3D drawn on 0% of frames
+frames, feed open:        16.8 ms (p90 16.9), 3D drawn on 0% of frames
+frames, revisit (+1.5 s): 21.7 ms (p90 17.4), 3D drawn on 6% of frames
+PASS  [after, likes on] social_feed_opened once, as before  ([{"screen":"wish","entry":"input_screen","has_my_wish":false,"sort":"popular"}])
+PASS  [after, likes on] focus on Back once the feed is up  (social-back)
+PASS  [after, likes on] Escape: back on the wish screen, the draft kept
+PASS  [after, likes on] no page errors
+
+== before, a whole run: frames that drew the 3D scene, by phase
+gate 15/15, opening 47/47, intro 16/16, idle 40/40, broken 56/56, wish 69/69, releasing 63/63, done 78/78
+PASS  [before] gate: the 3D scene drawn on (nearly) every frame  (15/15)
+PASS  [before] opening: the 3D scene drawn on (nearly) every frame  (47/47)
+PASS  [before] intro: the 3D scene drawn on (nearly) every frame  (16/16)
+PASS  [before] idle: the 3D scene drawn on (nearly) every frame  (40/40)
+PASS  [before] broken: the 3D scene drawn on (nearly) every frame  (56/56)
+PASS  [before] releasing: the 3D scene drawn on (nearly) every frame  (63/63)
+PASS  [before] a whole run: no page errors
+
+== after, a whole run: frames that drew the 3D scene, by phase
+gate 15/15, opening 47/47, intro 18/18, idle 40/40, broken 56/56, wish 1/309, releasing 62/63, done 11/431
+PASS  [after] gate: the 3D scene drawn on (nearly) every frame  (15/15)
+PASS  [after] opening: the 3D scene drawn on (nearly) every frame  (47/47)
+PASS  [after] intro: the 3D scene drawn on (nearly) every frame  (18/18)
+PASS  [after] idle: the 3D scene drawn on (nearly) every frame  (40/40)
+PASS  [after] broken: the 3D scene drawn on (nearly) every frame  (56/56)
+PASS  [after] releasing: the 3D scene drawn on (nearly) every frame  (62/63)
+PASS  [after] a whole run: no page errors
