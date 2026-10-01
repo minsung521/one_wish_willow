@@ -1257,7 +1257,7 @@ async function boot() {
       // MIN-160: once their wish is known, at the top, after the lines are up
       const toast = new RevisitToast({ onGo: () => social.open('revisit', 'revisit_toast') });
       const asked = loadMyWish();
-      setTimeout(() => asked.then((data) => { if (data && data.wish && phase === 'already') toast.show(data); }), 2400);
+      setTimeout(() => asked.then((data) => { if (RevisitToast.wants(data) && phase === 'already') toast.show(data); }), 2400);
     }
   } else if (record.state === 'broken') {
     // broken, but the wish was never written

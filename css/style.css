@@ -842,6 +842,84 @@ body {
 }
 .more-toggle:hover, .more-toggle:focus-visible { color: var(--ink); text-decoration-color: currentColor; }
 
+/* the order of the list (MIN-196): "Popular ▾", small, right-aligned just
+   above it; it opens a short menu under itself */
+.social-sort {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 -8px 0 0;
+}
+.social-sort[hidden] { display: none; }
+.social-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 8px 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font: 700 11px var(--serif);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+.social-sort-btn::after { content: "▾"; font-size: 10px; letter-spacing: 0; transition: transform 0.2s ease; }
+.social-sort-btn[aria-expanded="true"]::after { transform: rotate(180deg); }
+.social-sort-btn:hover,
+.social-sort-btn:focus-visible,
+.social-sort-btn[aria-expanded="true"] { color: var(--ink); }
+.social-sort-btn:focus-visible { box-shadow: inset 0 0 0 1px var(--ink-soft); border-radius: 999px; }
+.social-sort-menu {
+  position: absolute;
+  top: 100%;
+  right: 8px;
+  min-width: 150px;
+  padding: 6px;
+  border: 1px solid rgba(220, 217, 200, 0.22);
+  border-radius: 14px;
+  background: #0d0b09;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+  animation: social-in 0.2s ease both;
+}
+.social-sort-menu[hidden] { display: none; }
+.social-sort-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink-soft);
+  font: 700 13px var(--serif);
+  letter-spacing: 0.04em;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  outline: none;
+}
+.social-sort-item:hover,
+.social-sort-item:focus-visible { background: rgba(220, 217, 200, 0.07); color: var(--ink); }
+/* the one in use: cream, with a small red dot */
+.social-sort-item[aria-checked="true"] { color: var(--ink); }
+.social-sort-item[aria-checked="true"]::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--red);
+}
+
 /* the heart: 44×44 at least, its middle on the first line's middle */
 .social-like {
   flex: 0 0 auto;
@@ -1110,7 +1188,6 @@ body {
 }
 .likes-toast-n { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .likes-toast-line[hidden] { display: none; }
-.likes-toast.bare { padding: 10px 46px 10px 12px; }
 .likes-toast-go {
   display: flex;
   align-items: center;

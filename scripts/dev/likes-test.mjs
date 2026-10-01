@@ -1,4 +1,4 @@
-// Checks the like API, the visitor's own wish and the mixed feed (MIN-160)
+// Checks the like API, the visitor's own wish and the sorted feed (MIN-160, MIN-196)
 // against the local server (server.mjs) and a local Postgres. It empties and
 // refills `wishes`, `likes` and `social_interest`, so it refuses any
 // DATABASE_URL that isn't on localhost.
@@ -156,19 +156,31 @@ check('not JSON: 400', (await fetch(BASE + '/api/like', { method: 'POST', body: 
   await db.query(`update wishes set moderation_status = 'approved', approved_at = now(), seed_likes = 0 where id = $1`, [ids.mine]);
 }
 
-// ---------------------------------------------------------------- the mixed feed
-async function feedAll(client, seed, at) {
+// ---------------------------------------------------------------- the sorted feed (MIN-196)
+async function feedAll(client, seed, at, sort) {
   const out = [];
   let offset = 0;
+  const q = sort === undefined ? '' : `&sort=${encodeURIComponent(sort)}`;
   for (let n = 0; n < 20 && offset !== null; n++) {
-    const r = await call('GET', `/api/social?client_id=${client}&seed=${seed}&at=${at}&offset=${offset}`);
+    const r = await call('GET', `/api/social?client_id=${client}&seed=${seed}&at=${at}&offset=${offset}${q}`);
     if (r.status !== 200) return { error: r.status };
+    if (n === 0) out.sort = r.json.sort;
     out.push(...r.json.wishes);
     offset = r.json.next;
   }
-  return { out };
+  return { out, sort: out.sort };
 }
+const ids_ = (list) => list.map((w) => w.id);
+const newestFirst = (list) => [...list].sort((a, b) => b - a);
 {
+  // no likes at all: Popular is still not just the newest first (ties are shuffled)
+  await db.query('delete from likes');
+  const now = Date.now();
+  const zeroPop = await feedAll(ME, 4242, now, 'popular');
+  const zeroLatest = await feedAll(ME, 4242, now, 'latest');
+  check('popular with no likes anywhere: not the same as latest',
+    JSON.stringify(ids_(zeroPop.out)) !== JSON.stringify(ids_(zeroLatest.out)) && zeroPop.out.every((w) => w.likes === 0));
+
   // likes spread so the most-liked order differs from the newest
   const fans = Array.from({ length: 8 }, () => randomUUID());
   const popular = ids.approved.slice(10, 18);
@@ -176,40 +188,51 @@ async function feedAll(client, seed, at) {
     for (let k = 0; k <= i; k++) await like(popular[i], fans[k], 'like', `192.0.2.${k + 1}`);
   }
   await like(ids.approved[3], ME);
-
   const at = Date.now();
-  const { out, error } = await feedAll(ME, 12345, at);
-  check('mixed feed answers', !error, String(error));
-  const idsSeen = out.map((w) => w.id);
-  const approvedCount = ids.approved.length; // the visitor's own one is left out
-  check('no duplicates across pages', new Set(idsSeen).size === idsSeen.length);
-  check('every approved wish but my own, once', idsSeen.length === approvedCount && ids.approved.every((id) => idsSeen.includes(id)));
-  check('my own wish is not in it', !idsSeen.includes(ids.mine));
-  check('no pending, rejected or hidden wish', ![ids.pending, ids.rejected, ids.hidden].some((id) => idsSeen.includes(id)));
-  check('no approved-but-private wish (MIN-194)', !idsSeen.includes(ids.privateApproved));
-  const slots = out.slice(0, 9).map((w) => w.slot).join(',');
-  check('the first nine go like, random, latest in turn', slots === 'like,random,latest,like,random,latest,like,random,latest', slots);
-  const kinds = new Set(out.map((w) => w.slot));
-  check('all three pools appear', kinds.has('like') && kinds.has('random') && kinds.has('latest'));
-  check('the first like-slot wish is the most liked', out[0].id === popular[popular.length - 1] && out[0].likes === 8);
-  const latest = out.find((w) => w.slot === 'latest');
-  check('the first latest-slot wish is the newest not drawn yet', latest && latest.id === Math.max(...ids.approved.filter((id) => id !== out[0].id && id !== out[1].id)));
-  const mineLiked = out.find((w) => w.id === ids.approved[3]);
-  check('liked flag for the asking client', mineLiked && mineLiked.liked === true && out.filter((w) => w.liked).length === 1);
-  check('each wish carries id, text, likes, liked, slot',
-    out.every((w) => typeof w.id === 'number' && typeof w.text === 'string' && typeof w.likes === 'number' && typeof w.liked === 'boolean' && typeof w.slot === 'string'));
+  const expectedSet = [...ids.approved].sort((a, b) => a - b).join();
 
-  const again = await feedAll(ME, 12345, at);
-  check('same seed and time: same order', JSON.stringify(again.out.map((w) => w.id)) === JSON.stringify(idsSeen));
-  const other = await feedAll(ME, 999, at);
-  check('another seed: another shuffle', JSON.stringify(other.out.map((w) => w.id)) !== JSON.stringify(idsSeen));
+  for (const sort of ['popular', 'latest', 'random']) {
+    const { out, error } = await feedAll(ME, 12345, at, sort);
+    check(`${sort}: answers, says its order`, !error && out.sort === sort, String(error || out.sort));
+    const seen = ids_(out);
+    check(`${sort}: every approved public wish but my own, once, across pages`,
+      new Set(seen).size === seen.length && [...seen].sort((a, b) => a - b).join() === expectedSet);
+    check(`${sort}: never my own, pending, rejected, hidden or private`,
+      ![ids.mine, ids.pending, ids.rejected, ids.hidden, ids.privateApproved].some((id) => seen.includes(id)));
+    check(`${sort}: each wish is { id, text, likes, liked } (no slot)`,
+      out.every((w) => Object.keys(w).join() === 'id,text,likes,liked'));
+    const again = await feedAll(ME, 12345, at, sort);
+    check(`${sort}: same seed, same order page after page`, JSON.stringify(ids_(again.out)) === JSON.stringify(seen));
+  }
+  const pop = (await feedAll(ME, 12345, at, 'popular')).out;
+  check('popular: most likes first, never rising', pop.every((w, k) => k === 0 || pop[k - 1].likes >= w.likes) && pop[0].id === popular[7] && pop[0].likes === 8);
+  const ties = pop.filter((w) => w.likes === 0).map((w) => w.id);
+  check('popular: ties are shuffled, not newest first', JSON.stringify(ties) !== JSON.stringify(newestFirst(ties)));
+  const tiesOther = (await feedAll(ME, 999, at, 'popular')).out.filter((w) => w.likes === 0).map((w) => w.id);
+  check('popular: another seed, another order among ties', JSON.stringify(ties) !== JSON.stringify(tiesOther));
+  const lat = ids_((await feedAll(ME, 12345, at, 'latest')).out);
+  check('latest: newest first', JSON.stringify(lat) === JSON.stringify(newestFirst(lat)));
+  const rnd = ids_((await feedAll(ME, 12345, at, 'random')).out);
+  const rnd2 = ids_((await feedAll(ME, 999, at, 'random')).out);
+  check('random: neither newest first nor by likes; another seed, another order',
+    JSON.stringify(rnd) !== JSON.stringify(lat) && JSON.stringify(rnd) !== JSON.stringify(ids_(pop)) && JSON.stringify(rnd) !== JSON.stringify(rnd2));
+
+  // pages cached before MIN-196 send no sort; anything unknown is popular too
+  const none = await feedAll(ME, 12345, at);
+  check('no sort (an older page): popular', none.sort === 'popular' && JSON.stringify(ids_(none.out)) === JSON.stringify(ids_(pop)));
+  const odd = await feedAll(ME, 12345, at, 'mixed');
+  check('unknown sort: popular', odd.sort === 'popular' && JSON.stringify(ids_(odd.out)) === JSON.stringify(ids_(pop)));
+  const oldPage = await call('GET', `/api/social?client_id=${ME}&seed=12345&at=${at}&offset=0`);
+  check("older page's request: still mode 'mix', so it keeps its hearts", oldPage.status === 200 && oldPage.json.mode === 'mix');
+
+  const mineLiked = pop.find((w) => w.id === ids.approved[3]);
+  check('liked flag for the asking client', mineLiked && mineLiked.liked === true && pop.filter((w) => w.liked).length === 1);
 
   // likes arriving while it scrolls don't move the order (ranked as of `at`)
-  const first = await call('GET', `/api/social?client_id=${ME}&seed=7&at=${at}&offset=0`);
+  const first = await call('GET', `/api/social?client_id=${ME}&sort=popular&seed=7&at=${at}&offset=0`);
   for (let k = 0; k < 9; k++) await like(ids.approved[40], randomUUID(), 'like', `192.0.2.${100 + k}`);
-  const rest = await feedAll(ME, 7, at);
-  const firstIds = first.json.wishes.map((w) => w.id);
-  check('likes after `at` leave the order as it was', JSON.stringify(rest.out.slice(0, 20).map((w) => w.id)) === JSON.stringify(firstIds));
+  const rest = await feedAll(ME, 7, at, 'popular');
+  check('popular: likes after `at` leave the order as it was', JSON.stringify(ids_(rest.out).slice(0, 20)) === JSON.stringify(ids_(first.json.wishes)));
   const shown = rest.out.find((w) => w.id === ids.approved[40]);
   check('...while the count shown is current', shown && shown.likes === 9);
 
@@ -225,7 +248,7 @@ async function feedAll(client, seed, at) {
 if (OFF) {
   check('[off] like: 404 closed', (await call('POST', '/api/like', { body: { wish_id: A, client_id: OTHER, action: 'like' }, base: OFF })).status === 404);
   check('[off] my wish: 404 closed', (await call('GET', `/api/my-wish?client_id=${ME}`, { base: OFF })).status === 404);
-  const r = await call('GET', `/api/social?client_id=${ME}&seed=1&offset=0`, { base: OFF });
+  const r = await call('GET', `/api/social?client_id=${ME}&sort=latest&seed=1&offset=0`, { base: OFF });
   check('[off] feed with client_id: the old answer', r.status === 200 && !('mode' in r.json) && Object.keys(r.json.wishes[0]).join() === 'id,text');
 }
 

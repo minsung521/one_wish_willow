@@ -7,7 +7,7 @@
 //    The optional third address serves the main branch, for the switch-off
 //    comparison: the feed and the revisit screen must read the same there.)
 //
-// The page's LIKES_ENABLED switch is turned on only inside these browsers, by
+// The page's LIKES_ENABLED switch is set inside these browsers (on, or off for the switch-off checks), by
 // rewriting js/config.js on its way in; the file itself stays off. PostHog's
 // SDK is blocked, so every track() stays in the snippet's queue
 // (window.posthog), where the events and their properties are read back.
@@ -110,8 +110,9 @@ async function context(device, { likes = true, record = null, client = ME, lastS
   }
   await ctx.route('**/js/config.js', async (r) => {
     const res = await r.fetch();
-    let text = (await res.text()).replace('SOCIAL_ENABLED = false', 'SOCIAL_ENABLED = true');
-    if (likes) text = text.replace('LIKES_ENABLED = false', 'LIKES_ENABLED = true');
+    // set both ways, whatever the file says (main has likes on since MIN-160 shipped)
+    const text = (await res.text()).replace('SOCIAL_ENABLED = false', 'SOCIAL_ENABLED = true')
+      .replace(/export const LIKES_ENABLED = (true|false);/, `export const LIKES_ENABLED = ${!!likes};`);
     r.fulfill({ response: res, body: text });
   });
   await ctx.addInitScript(({ rec, client, last }) => {
@@ -376,7 +377,7 @@ async function approvedFlow(device, tag) {
   await page.waitForTimeout(600);
   check(`[${tag}] like: one row in likes`, (await likeRows(wishId)) === 1);
   e = await lastEvent(page, 'wish_liked');
-  check(`[${tag}] wish_liked: wish_id, position 2, slot random`, e && e.props.wish_id === Number(wishId) && e.props.position === 2 && e.props.slot === 'random', JSON.stringify(e && e.props));
+  check(`[${tag}] wish_liked: wish_id, position 2, sort popular, no slot`, e && e.props.wish_id === Number(wishId) && e.props.position === 2 && e.props.sort === 'popular' && !('slot' in e.props), JSON.stringify(e && e.props));
 
   // tap twice fast: back where it was, one request settles it
   await tap(page, target, device);
@@ -420,7 +421,7 @@ async function approvedFlow(device, tag) {
   await page.waitForTimeout(800);
   check(`[${tag}] unlike: no row`, (await likeRows(wishId)) === 0);
   e = await lastEvent(page, 'wish_unliked');
-  check(`[${tag}] wish_unliked: wish_id, position, slot`, e && e.props.wish_id === Number(wishId) && typeof e.props.position === 'number' && typeof e.props.slot === 'string');
+  check(`[${tag}] wish_unliked: wish_id, position, slot`, e && e.props.wish_id === Number(wishId) && typeof e.props.position === 'number' && !('slot' in e.props) && typeof e.props.sort === 'string');
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#share.on', { timeout: 20000 });
   await tap(page, '#others-btn', device);
@@ -473,6 +474,19 @@ async function approvedFlow(device, tag) {
   await page.waitForTimeout(700);
   check(`[${tag}] × closes the toast`, !(await visible(page, '#likes-toast')));
   check(`[${tag}] Share still there after closing it`, await page.evaluate(() => document.getElementById('share').classList.contains('on')));
+  const closedAt = await page.evaluate(() => localStorage.getItem('oww_toast_closed_likes'));
+  const baseline = await page.evaluate(() => localStorage.getItem('oww_last_likes'));
+  check(`[${tag}] × remembers the count it showed, apart from the +n baseline`, closedAt === '12' && baseline === '12', `${closedAt} / ${baseline}`);
+  // back, nothing changed: no toast
+  await toRevisit(page);
+  await page.waitForTimeout(2600);
+  check(`[${tag}] closed, same count next visit: no toast`, !(await visible(page, '#likes-toast')));
+  // one more like: it comes back, with the increase
+  await addLikes(ids.mine, 1);
+  await toRevisit(page);
+  await page.waitForSelector('#likes-toast.on', { timeout: 8000 });
+  await page.waitForTimeout(800);
+  check(`[${tag}] closed, then a new like: the toast is back with +1 new`, squash(await page.textContent('#likes-toast-line')) === 'Your wish got 13 +1 new');
 
   const leaked = await page.evaluate(() => JSON.stringify(window.posthog || []).includes('grandmother'));
   check(`[${tag}] my wish's text never reached an analytics call`, !leaked);
@@ -480,27 +494,32 @@ async function approvedFlow(device, tag) {
   await ctx.close();
 }
 
-// ================================================================ 2. pending, and approved with no likes
+// ================================================================ 2. no toast: pending, no likes, private (MIN-196)
+/** The feed from Share's own button, once its opening event is in. */
+async function feedFromShare(page, device) {
+  await tap(page, '#others-btn', device);
+  await waitFeed(page);
+  await page.waitForFunction(() => (window.posthog || []).some((c) => c[0] === 'capture' && c[1] === 'social_feed_opened'), null, { timeout: 10000 });
+  await page.waitForTimeout(500);
+}
+async function noToast(page) {
+  await toRevisit(page);
+  await page.waitForTimeout(2600);
+  return !(await visible(page, '#likes-toast')) && !(await lastEvent(page, 'revisit_toast_shown'));
+}
 async function quietFlow(device, tag) {
   await seed({ myStatus: 'pending' });
   const ctx = await context(device, { record: wished() });
   const page = await ctx.newPage();
-  await toRevisit(page);
-  await page.waitForSelector('#likes-toast.on', { timeout: 8000 });
-  await page.waitForTimeout(1000);
-  check(`[${tag}] pending: toast has only the button`, !(await visible(page, '#likes-toast-line')) && await visible(page, '#likes-toast-go'));
-  let e = await lastEvent(page, 'revisit_toast_shown');
-  check(`[${tag}] pending: revisit_toast_shown without a count`, e && e.props.like_count === null && e.props.like_delta === null);
-  await shot(page, `${tag}-06-revisit-toast-bare`);
-  await tap(page, '#likes-toast-go', device);
-  await waitFeed(page);
+  check(`[${tag}] pending: no toast, no revisit_toast_shown`, await noToast(page));
+  await feedFromShare(page, device);
   await page.waitForSelector('.my-wish');
   const card = await page.evaluate(() => ({
     priv: document.querySelector('.my-wish-private') && document.querySelector('.my-wish-private').textContent,
     count: !!document.querySelector('.my-wish-count'),
   }));
   check(`[${tag}] pending card: "Only you can see this for now.", no count`, card.priv === 'Only you can see this for now.' && !card.count);
-  e = await lastEvent(page, 'my_wish_viewed');
+  let e = await lastEvent(page, 'my_wish_viewed');
   check(`[${tag}] my_wish_viewed: pending`, e && e.props.status === 'pending' && e.props.like_count === null);
   check(`[${tag}] pending: nothing stored for the increase`, (await page.evaluate(() => localStorage.getItem('oww_last_likes'))) === null);
   await page.evaluate(() => { document.getElementById('social').scrollTop = 0; });
@@ -510,47 +529,119 @@ async function quietFlow(device, tag) {
   await db.query("update wishes set moderation_status = 'approved', approved_at = now() where id = $1", [ids.mine]);
   const ctx2 = await context(device, { record: wished() });
   const page2 = await ctx2.newPage();
-  await toRevisit(page2);
-  await page2.waitForSelector('#likes-toast.on', { timeout: 8000 });
-  check(`[${tag}] approved, 0 likes: toast has only the button`, !(await visible(page2, '#likes-toast-line')) && await visible(page2, '#likes-toast-go'));
-  await tap(page2, '#likes-toast-go', device);
-  await waitFeed(page2);
+  check(`[${tag}] approved, 0 likes: no toast`, await noToast(page2));
+  await feedFromShare(page2, device);
   await page2.waitForSelector('.my-wish');
   check(`[${tag}] approved, 0 likes: the card shows a faint ♥ 0`,
     (await page2.textContent('.my-wish-n')).trim() === '0' && await page2.evaluate(() => document.querySelector('.my-wish-count').classList.contains('zero')));
   await ctx2.close();
 
-  // MIN-194: their own wish is approved but private, with likes in the table: shown like a pending one
+  // a wish its maker kept private (MIN-194), approved and liked: no card, no ask, no toast, no my_wish_viewed
   await db.query('update wishes set is_private = true where id = $1', [ids.mine]);
   await addLikes(ids.mine, 4);
   const ctxP = await context(device, { record: wished() });
   const pageP = await ctxP.newPage();
-  await toRevisit(pageP);
-  await pageP.waitForSelector('#likes-toast.on', { timeout: 8000 });
-  check(`[${tag}] private: toast has only the button`, !(await visible(pageP, '#likes-toast-line')) && await visible(pageP, '#likes-toast-go'));
-  await tap(pageP, '#likes-toast-go', device);
-  await waitFeed(pageP);
-  await pageP.waitForSelector('.my-wish');
-  const priv = await pageP.evaluate(() => ({
-    note: document.querySelector('.my-wish-private') && document.querySelector('.my-wish-private').textContent,
-    count: !!document.querySelector('.my-wish-count'),
-  }));
-  check(`[${tag}] private card: "Only you can see this for now.", no count`, priv.note === 'Only you can see this for now.' && !priv.count);
-  e = await lastEvent(pageP, 'my_wish_viewed');
-  check(`[${tag}] my_wish_viewed: status private, no counts`, e && e.props.status === 'private' && e.props.like_count === null && e.props.display_like_count === null, JSON.stringify(e && e.props));
-  e = await lastEvent(pageP, 'revisit_toast_shown');
-  check(`[${tag}] private: revisit_toast_shown without a count`, e && e.props.like_count === null);
+  check(`[${tag}] private: no toast on the revisit screen`, await noToast(pageP));
+  await feedFromShare(pageP, device);
+  check(`[${tag}] private: no card and no "Get notified" in the feed`,
+    !(await pageP.$('.my-wish')) && !(await pageP.$('.my-wish-ask')) && !(await visible(pageP, '#social-mine')));
+  check(`[${tag}] private: my_wish_viewed not sent`, !(await lastEvent(pageP, 'my_wish_viewed')));
+  e = await lastEvent(pageP, 'social_feed_opened');
+  check(`[${tag}] private: social_feed_opened has_my_wish false`, e && e.props.has_my_wish === false, JSON.stringify(e && e.props));
+  check(`[${tag}] private: their own wish isn't in the list either`,
+    !(await pageP.evaluate((t) => [...document.querySelectorAll('#social-list p')].some((p) => p.textContent === t), MY_WISH)));
   await pageP.evaluate(() => { document.getElementById('social').scrollTop = 0; });
-  await shot(pageP, `${tag}-12-feed-my-wish-private`);
+  await shot(pageP, `${tag}-12-feed-private-author`);
   await ctxP.close();
 
   // no wish under this client_id (it was made in another browser): no toast at all
   const ctx3 = await context(device, { record: wished(), client: randomUUID() });
   const page3 = await ctx3.newPage();
-  await toRevisit(page3);
-  await page3.waitForTimeout(2500);
-  check(`[${tag}] no wish found: no toast`, !(await visible(page3, '#likes-toast')));
+  check(`[${tag}] no wish found: no toast`, await noToast(page3));
   await ctx3.close();
+}
+
+// ================================================================ 2b. the order (MIN-196)
+async function sortFlow(device, tag) {
+  await seed({ myStatus: 'approved', myLikes: 2 });
+  const order = async (sql) => (await db.query(sql, [ME])).rows.map((r) => r.wish_text);
+  const newest = await order(`select wish_text from wishes where moderation_status = 'approved' and not is_private and client_id <> $1 order by id desc`);
+  const ctx = await context(device, { record: wished() });
+  const page = await ctx.newPage();
+  await toRevisit(page);
+  await feedFromShare(page, device);
+  const texts = () => page.evaluate(() => [...document.querySelectorAll('#social-list > li p')].map((p) => p.textContent));
+  const label = () => page.textContent('#social-sort-btn');
+  let e = await lastEvent(page, 'social_feed_opened');
+  check(`[${tag}] sort: Popular by default; social_feed_opened says so`, (await label()) === 'Popular' && e && e.props.sort === 'popular');
+  // where it sits: under the title (and the pinned card), right-aligned, clear of the header's logo
+  const place = await page.evaluate(() => {
+    const r = (q) => document.querySelector(q).getBoundingClientRect();
+    const b = r('#social-sort-btn'), list = r('#social-list'), card = r('.my-wish'), brand = r('.social-brand'), title = r('#social-title');
+    return { aboveList: b.bottom <= list.top + 1, belowCard: b.top >= card.bottom - 1, belowTitle: b.top >= title.bottom, clearOfLogo: b.top >= brand.bottom, right: Math.round(list.right - b.right), h: b.height };
+  });
+  check(`[${tag}] sort: just above the list, under the card, right-aligned, clear of the logo, 44px tall`,
+    place.aboveList && place.belowCard && place.belowTitle && place.clearOfLogo && place.right < 40 && place.h >= 44, JSON.stringify(place));
+  await shot(page, `${tag}-13-sort-closed`);
+  await tap(page, '#social-sort-btn', device);
+  await page.waitForTimeout(300);
+  const items = await page.evaluate(() => [...document.querySelectorAll('.social-sort-item')].map((b) => ({ t: b.textContent, on: b.getAttribute('aria-checked'), h: b.getBoundingClientRect().height })));
+  check(`[${tag}] sort: the menu offers Popular / Latest / Random, Popular checked, 44px each`,
+    items.map((x) => x.t).join() === 'Popular,Latest,Random' && items[0].on === 'true' && items.every((x) => x.h >= 44));
+  await shot(page, `${tag}-14-sort-open`);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  check(`[${tag}] sort: Escape closes the menu, not the feed`, !(await visible(page, '.social-sort-menu')) && await feedOpen(page));
+
+  // Latest, from further down the list: back to the top, newest first, the card still pinned
+  await page.evaluate(() => { document.getElementById('social').scrollTop = 900; });
+  await tap(page, '#social-sort-btn', device);
+  await tap(page, '.social-sort-item[data-sort="latest"]', device);
+  await waitFeed(page);
+  const top = await page.evaluate(() => document.getElementById('social').scrollTop);
+  check(`[${tag}] sort: changing it goes back to the top`, top === 0, String(top));
+  check(`[${tag}] sort: the pinned card stays`, await visible(page, '.my-wish'));
+  await loadAll(page, device);
+  check(`[${tag}] Latest: newest first, all of them, none twice`, JSON.stringify(await texts()) === JSON.stringify(newest));
+  e = await lastEvent(page, 'feed_sort_changed');
+  check(`[${tag}] feed_sort_changed: from popular, to latest`, e && e.props.from === 'popular' && e.props.to === 'latest');
+  // a like here says sort: latest
+  await page.evaluate(() => { document.getElementById('social').scrollTop = 0; });
+  await tap(page, '#social-list > li:nth-child(1) .social-like', device);
+  await page.waitForTimeout(800);
+  e = await lastEvent(page, 'wish_liked');
+  check(`[${tag}] wish_liked in Latest: sort latest, position 1`, e && e.props.sort === 'latest' && e.props.position === 1 && !('slot' in e.props));
+  await tap(page, '#social-list > li:nth-child(1) .social-like', device);
+  await page.waitForTimeout(800);
+
+  // Random: none twice, not newest first
+  await tap(page, '#social-sort-btn', device);
+  await tap(page, '.social-sort-item[data-sort="random"]', device);
+  await waitFeed(page);
+  await loadAll(page, device);
+  const rnd = await texts();
+  check(`[${tag}] Random: all of them once, in another order`,
+    rnd.length === newest.length && new Set(rnd).size === rnd.length && JSON.stringify(rnd) !== JSON.stringify(newest));
+
+  // Popular again: never rising
+  await tap(page, '#social-sort-btn', device);
+  await tap(page, '.social-sort-item[data-sort="popular"]', device);
+  await waitFeed(page);
+  await loadAll(page, device);
+  const counts = await page.evaluate(() => [...document.querySelectorAll('#social-list .social-like-count')].map((c) => Number(c.textContent)));
+  check(`[${tag}] Popular: most likes first, never rising`, counts.every((n, k) => k === 0 || counts[k - 1] >= n) && counts[0] === 12);
+
+  // remembered: Latest, then a fresh visit
+  await tap(page, '#social-sort-btn', device);
+  await tap(page, '.social-sort-item[data-sort="latest"]', device);
+  await waitFeed(page);
+  await page.keyboard.press('Escape');
+  await toRevisit(page);
+  await feedFromShare(page, device);
+  e = await lastEvent(page, 'social_feed_opened');
+  check(`[${tag}] sort: remembered on the next visit (Latest)`, (await label()) === 'Latest' && e && e.props.sort === 'latest'
+    && (await texts())[0] === newest[0]);
+  await ctx.close();
 }
 
 // ================================================================ 3. from the wish screen, and the ending as it was
@@ -665,6 +756,7 @@ for (const [device, tag] of [[MOBILE, 'm'], [DESKTOP, 'd']]) {
   console.log(`\n== ${tag === 'm' ? 'mobile 390×844, touch' : 'desktop 1280×800'}`);
   await approvedFlow(device, tag);
   await quietFlow(device, tag);
+  await sortFlow(device, tag);
   await wishFlow(device, tag);
   await offFlow(device, tag);
 }

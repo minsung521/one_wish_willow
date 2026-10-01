@@ -9,15 +9,17 @@
 // own switch. Nothing but an error code is ever logged.
 //
 // With likes (MIN-160: LIKES_ENABLED=true here, and the page sends client_id)
-// the same approved wishes come in a mixed order instead, see mixed() below:
-// GET /api/social?client_id=<uuid>&seed=<int>&at=<ms>&offset=<n>
-//   -> { mode: 'mix', wishes: [{ id, text, likes, liked, slot }], next: offset | null }
+// the same wishes come in the order the visitor picked (MIN-196), see sorted():
+// GET /api/social?client_id=<uuid>&sort=popular|latest|random&seed=<int>&at=<ms>&offset=<n>
+//   -> { mode: 'mix', sort, wishes: [{ id, text, likes, liked }], next: offset | null }
+// A missing or unknown sort is popular, so a page cached from before MIN-196
+// (which sends no sort) still works; `mode` stays 'mix' for the same reason.
 // Without client_id, or with the switch off, it answers exactly as before.
 import { neon } from '@neondatabase/serverless';
 import { clientIdOf, displayLikes, likesEnabled, toCount } from './_lib/likes.js';
 
 const PAGE = 20;
-const SLOTS = ['like', 'random', 'latest'];
+const SORTS = new Set(['popular', 'latest', 'random']);
 const MAX_OFFSET = 100000;
 
 export async function GET(request) {
@@ -25,7 +27,7 @@ export async function GET(request) {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) return reply(503, { status: 'unavailable' });
   const params = new URL(request.url).searchParams;
-  if (likesEnabled() && params.has('client_id')) return mixed(databaseUrl, params);
+  if (likesEnabled() && params.has('client_id')) return sorted(databaseUrl, params);
   const raw = params.get('before');
   if (raw !== null && (!/^[1-9]\d{0,14}$/.test(raw) || !Number.isSafeInteger(Number(raw)))) {
     return reply(400, { status: 'invalid' });
@@ -49,20 +51,21 @@ export async function GET(request) {
 }
 
 /**
- * The feed with likes. Approved wishes only, never a private one (MIN-194,
- * filtered in both queries) and never the visitor's own. Three
- * orders of the same wishes (most liked, a shuffle, newest) are drawn from in
- * turn, like -> random -> latest -> like..., each taking its next wish not
- * already drawn, and every wish says which of them it came from (`slot`).
- *
- * The page keeps `seed` (the shuffle) and `at` (the time likes are ranked as
- * of) for one opening of the feed and pages with `offset`, so the order holds
- * still while it scrolls even as likes come in; the page also drops any id it
- * has already shown. The whole order is worked out per request: wishes are
- * approved by hand, one by one, so there are hundreds, not millions.
+ * The feed with likes, in the order picked on the page (MIN-196). Approved
+ * wishes only, never a private one (MIN-194, filtered in both queries) and
+ * never the visitor's own.
+ *   popular: most likes shown first (real + seed_likes), ties shuffled by seed
+ *   latest:  newest first
+ *   random:  shuffled by seed
+ * The page keeps `seed` and `at` (the time likes are ranked as of) for one
+ * opening of the feed, or one choice of order, and pages with `offset`, so
+ * the order holds still while it scrolls even as likes come in; the page also
+ * drops any id it has already shown. The whole order is worked out per
+ * request: wishes are approved by hand, so there are hundreds, not millions.
  */
-async function mixed(databaseUrl, params) {
+async function sorted(databaseUrl, params) {
   const clientId = clientIdOf(params.get('client_id'));
+  const sort = SORTS.has(params.get('sort')) ? params.get('sort') : 'popular';
   const seed = intParam(params.get('seed'), 0, 2147483647, 0);
   const at = intParam(params.get('at'), 0, Number.MAX_SAFE_INTEGER, Date.now());
   const offset = intParam(params.get('offset'), 0, MAX_OFFSET, 0);
@@ -85,24 +88,26 @@ async function mixed(databaseUrl, params) {
       liked: r.liked === true,
       shuffle: mix(seed, Number(r.id)),
     }));
-    const order = interleave({
-      like: [...all].sort((a, b) => b.rank - a.rank || b.id - a.id),
-      random: [...all].sort((a, b) => a.shuffle - b.shuffle || b.id - a.id),
-      latest: [...all].sort((a, b) => b.id - a.id),
-    });
+    const byShuffle = (a, b) => a.shuffle - b.shuffle || b.id - a.id;
+    const order = all.sort(
+      sort === 'latest' ? (a, b) => b.id - a.id
+        : sort === 'random' ? byShuffle
+          : (a, b) => b.rank - a.rank || byShuffle(a, b),
+    );
     const page = order.slice(offset, offset + PAGE);
     const texts = new Map();
     if (page.length) {
       const found = await sql`select id, wish_text from wishes
-        where id = any(${page.map((p) => p.item.id)}::bigint[])
+        where id = any(${page.map((p) => p.id)}::bigint[])
           and moderation_status = 'approved' and approved_at is not null
           and is_private = false`;
       for (const r of found) texts.set(Number(r.id), r.wish_text);
     }
     return reply(200, {
       mode: 'mix',
-      wishes: page.filter((p) => texts.has(p.item.id)).map(({ item, slot }) => ({
-        id: item.id, text: texts.get(item.id), likes: item.likes, liked: item.liked, slot,
+      sort,
+      wishes: page.filter((p) => texts.has(p.id)).map((p) => ({
+        id: p.id, text: texts.get(p.id), likes: p.likes, liked: p.liked,
       })),
       next: offset + PAGE < order.length ? offset + PAGE : null,
     });
@@ -110,25 +115,6 @@ async function mixed(databaseUrl, params) {
     console.error('social_list_failed', err?.code || err?.name || 'unknown');
     return reply(503, { status: 'unavailable' });
   }
-}
-
-/** like -> random -> latest in turn, each giving its next wish not yet drawn. */
-function interleave(pools) {
-  const used = new Set();
-  const next = Object.fromEntries(SLOTS.map((s) => [s, 0]));
-  const total = pools.latest.length;
-  const out = [];
-  while (out.length < total) {
-    for (const slot of SLOTS) {
-      const pool = pools[slot];
-      while (next[slot] < pool.length && used.has(pool[next[slot]].id)) next[slot]++;
-      if (next[slot] >= pool.length) continue;
-      const item = pool[next[slot]++];
-      used.add(item.id);
-      out.push({ item, slot });
-    }
-  }
-  return out;
 }
 
 /** A 32-bit hash of (seed, id): the shuffle, the same for one seed every time. */

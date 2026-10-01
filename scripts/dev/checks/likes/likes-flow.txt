@@ -11,7 +11,7 @@ PASS  [m] return visit: "Your wish got ♥ 12 +3 new"  (Your wish got 12 +3 new)
 PASS  [m] no "people wished for this too" anywhere
 PASS  [m] revisit_toast_shown: like_count 12, like_delta 3
 PASS  [m] revisit_toast_clicked with like_count, like_delta
-PASS  [m] social_feed_opened: entry revisit_toast, has_my_wish  ({"screen":"revisit","entry":"revisit_toast","has_my_wish":true})
+PASS  [m] social_feed_opened: entry revisit_toast, has_my_wish  ({"screen":"revisit","entry":"revisit_toast","has_my_wish":true,"sort":"popular"})
 PASS  [m] my wish card: at the top, the wish, "♥ 12" and "+3 new"  (12 +3 new)
 PASS  [m] my wish card: up to three lines of the wish, upright, no outline  ({"l":3,"o":"0px"})
 PASS  [m] my wish card: "Received ♥ 12", not a bare heart
@@ -42,7 +42,7 @@ PASS  [m] wishes of three lines or less get no "More"  (25 short)
 PASS  [m] like: +1 at once, pressed
 PASS  [m] like: the little beat runs
 PASS  [m] like: one row in likes
-PASS  [m] wish_liked: wish_id, position 2, slot random  ({"wish_id":28,"position":2,"slot":"random"})
+PASS  [m] wish_liked: wish_id, position 2, sort popular, no slot  ({"wish_id":18,"position":2,"sort":"popular"})
 PASS  [m] two quick taps: still liked, still one row
 PASS  [m] offline unlike: shown at once…
 PASS  [m] …then back to liked, count restored
@@ -61,26 +61,41 @@ PASS  [m] email_submitted: source feed_my_wish, no address
 PASS  [m] email in: the next time, no email line at all
 PASS  [m] × closes the toast
 PASS  [m] Share still there after closing it
+PASS  [m] × remembers the count it showed, apart from the +n baseline  (12 / 12)
+PASS  [m] closed, same count next visit: no toast
+PASS  [m] closed, then a new like: the toast is back with +1 new
 PASS  [m] my wish's text never reached an analytics call
 PASS  [m] no page errors
-PASS  [m] pending: toast has only the button
-PASS  [m] pending: revisit_toast_shown without a count
+PASS  [m] pending: no toast, no revisit_toast_shown
 PASS  [m] pending card: "Only you can see this for now.", no count
 PASS  [m] my_wish_viewed: pending
 PASS  [m] pending: nothing stored for the increase
-PASS  [m] approved, 0 likes: toast has only the button
+PASS  [m] approved, 0 likes: no toast
 PASS  [m] approved, 0 likes: the card shows a faint ♥ 0
-PASS  [m] private: toast has only the button
-PASS  [m] private card: "Only you can see this for now.", no count
-PASS  [m] my_wish_viewed: status private, no counts  ({"status":"private","like_count":null,"display_like_count":null,"like_delta":null})
-PASS  [m] private: revisit_toast_shown without a count
+PASS  [m] private: no toast on the revisit screen
+PASS  [m] private: no card and no "Get notified" in the feed
+PASS  [m] private: my_wish_viewed not sent
+PASS  [m] private: social_feed_opened has_my_wish false  ({"screen":"revisit","entry":"revisit_button","has_my_wish":false,"sort":"popular"})
+PASS  [m] private: their own wish isn't in the list either
 PASS  [m] no wish found: no toast
-PASS  [m] wish screen → feed: up within 200 ms  (77 ms)
+PASS  [m] sort: Popular by default; social_feed_opened says so
+PASS  [m] sort: just above the list, under the card, right-aligned, clear of the logo, 44px tall  ({"aboveList":true,"belowCard":true,"belowTitle":true,"clearOfLogo":true,"right":-8,"h":44})
+PASS  [m] sort: the menu offers Popular / Latest / Random, Popular checked, 44px each
+PASS  [m] sort: Escape closes the menu, not the feed
+PASS  [m] sort: changing it goes back to the top  (0)
+PASS  [m] sort: the pinned card stays
+PASS  [m] Latest: newest first, all of them, none twice
+PASS  [m] feed_sort_changed: from popular, to latest
+PASS  [m] wish_liked in Latest: sort latest, position 1
+PASS  [m] Random: all of them once, in another order
+PASS  [m] Popular: most likes first, never rising
+PASS  [m] sort: remembered on the next visit (Latest)
+PASS  [m] wish screen → feed: up within 200 ms  (88 ms)
 PASS  [m] wish screen → feed: no errors
 PASS  [m] wish screen → feed: no request for a wish that isn't made yet  (/api/social)
 PASS  [m] wish screen: entry input_screen, has_my_wish false
 PASS  [m] no wish yet: no card
-PASS  [m] wish screen → feed, CPU ×4: up within 200 ms  (168 ms)
+PASS  [m] wish screen → feed, CPU ×4: up within 200 ms  (149 ms)
 PASS  [m] wish screen → feed, CPU ×4: still no errors
 PASS  [m] the draft is still there after the feed
 PASS  [m] the ending is as it was: lines, Share, no likes toast  ({"main":"Wait up to 24 hours for your wish to come true.","sub":"After granting your wish, the One Wish Willow™ loses its magical properties.","toast":false,"share":"Share","others":"See others' wishes"})
@@ -106,7 +121,7 @@ PASS  [d] return visit: "Your wish got ♥ 12 +3 new"  (Your wish got 12 +3 new)
 PASS  [d] no "people wished for this too" anywhere
 PASS  [d] revisit_toast_shown: like_count 12, like_delta 3
 PASS  [d] revisit_toast_clicked with like_count, like_delta
-PASS  [d] social_feed_opened: entry revisit_toast, has_my_wish  ({"screen":"revisit","entry":"revisit_toast","has_my_wish":true})
+PASS  [d] social_feed_opened: entry revisit_toast, has_my_wish  ({"screen":"revisit","entry":"revisit_toast","has_my_wish":true,"sort":"popular"})
 PASS  [d] my wish card: at the top, the wish, "♥ 12" and "+3 new"  (12 +3 new)
 PASS  [d] my wish card: up to three lines of the wish, upright, no outline  ({"l":2,"o":"0px"})
 PASS  [d] my wish card: "Received ♥ 12", not a bare heart
@@ -131,7 +146,7 @@ PASS  [d] wishes of three lines or less get no "More"  (25 short)
 PASS  [d] like: +1 at once, pressed
 PASS  [d] like: the little beat runs
 PASS  [d] like: one row in likes
-PASS  [d] wish_liked: wish_id, position 2, slot random  ({"wish_id":22,"position":2,"slot":"random"})
+PASS  [d] wish_liked: wish_id, position 2, sort popular, no slot  ({"wish_id":18,"position":2,"sort":"popular"})
 PASS  [d] two quick taps: still liked, still one row
 PASS  [d] offline unlike: shown at once…
 PASS  [d] …then back to liked, count restored
@@ -150,26 +165,41 @@ PASS  [d] email_submitted: source feed_my_wish, no address
 PASS  [d] email in: the next time, no email line at all
 PASS  [d] × closes the toast
 PASS  [d] Share still there after closing it
+PASS  [d] × remembers the count it showed, apart from the +n baseline  (12 / 12)
+PASS  [d] closed, same count next visit: no toast
+PASS  [d] closed, then a new like: the toast is back with +1 new
 PASS  [d] my wish's text never reached an analytics call
 PASS  [d] no page errors
-PASS  [d] pending: toast has only the button
-PASS  [d] pending: revisit_toast_shown without a count
+PASS  [d] pending: no toast, no revisit_toast_shown
 PASS  [d] pending card: "Only you can see this for now.", no count
 PASS  [d] my_wish_viewed: pending
 PASS  [d] pending: nothing stored for the increase
-PASS  [d] approved, 0 likes: toast has only the button
+PASS  [d] approved, 0 likes: no toast
 PASS  [d] approved, 0 likes: the card shows a faint ♥ 0
-PASS  [d] private: toast has only the button
-PASS  [d] private card: "Only you can see this for now.", no count
-PASS  [d] my_wish_viewed: status private, no counts  ({"status":"private","like_count":null,"display_like_count":null,"like_delta":null})
-PASS  [d] private: revisit_toast_shown without a count
+PASS  [d] private: no toast on the revisit screen
+PASS  [d] private: no card and no "Get notified" in the feed
+PASS  [d] private: my_wish_viewed not sent
+PASS  [d] private: social_feed_opened has_my_wish false  ({"screen":"revisit","entry":"revisit_button","has_my_wish":false,"sort":"popular"})
+PASS  [d] private: their own wish isn't in the list either
 PASS  [d] no wish found: no toast
-PASS  [d] wish screen → feed: up within 200 ms  (80 ms)
+PASS  [d] sort: Popular by default; social_feed_opened says so
+PASS  [d] sort: just above the list, under the card, right-aligned, clear of the logo, 44px tall  ({"aboveList":true,"belowCard":true,"belowTitle":true,"clearOfLogo":true,"right":-8,"h":44})
+PASS  [d] sort: the menu offers Popular / Latest / Random, Popular checked, 44px each
+PASS  [d] sort: Escape closes the menu, not the feed
+PASS  [d] sort: changing it goes back to the top  (0)
+PASS  [d] sort: the pinned card stays
+PASS  [d] Latest: newest first, all of them, none twice
+PASS  [d] feed_sort_changed: from popular, to latest
+PASS  [d] wish_liked in Latest: sort latest, position 1
+PASS  [d] Random: all of them once, in another order
+PASS  [d] Popular: most likes first, never rising
+PASS  [d] sort: remembered on the next visit (Latest)
+PASS  [d] wish screen → feed: up within 200 ms  (88 ms)
 PASS  [d] wish screen → feed: no errors
 PASS  [d] wish screen → feed: no request for a wish that isn't made yet  (/api/social)
 PASS  [d] wish screen: entry input_screen, has_my_wish false
 PASS  [d] no wish yet: no card
-PASS  [d] wish screen → feed, CPU ×4: up within 200 ms  (48 ms)
+PASS  [d] wish screen → feed, CPU ×4: up within 200 ms  (64 ms)
 PASS  [d] wish screen → feed, CPU ×4: still no errors
 PASS  [d] the draft is still there after the feed
 PASS  [d] the ending is as it was: lines, Share, no likes toast  ({"main":"Wait up to 24 hours for your wish to come true.","sub":"After granting your wish, the One Wish Willow™ loses its magical properties.","toast":false,"share":"Share","others":"See others' wishes"})
@@ -183,4 +213,4 @@ PASS  [d] switch off: the feed reads the same as main
 PASS  [d] switch off: the same requests as main
 PASS  [d] switch off: the same feed event as main
 
-180/180 passed
+210/210 passed

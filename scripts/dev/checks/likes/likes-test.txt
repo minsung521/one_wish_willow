@@ -31,21 +31,32 @@ PASS  my wish, private and pending: status private, no likes shown  ({"id":50,"t
 PASS  my wish, pending: status pending, no likes shown
 PASS  my wish, rejected: status rejected, no likes shown
 PASS  my wish, hidden: status rejected, no likes shown
-PASS  mixed feed answers  (undefined)
-PASS  no duplicates across pages
-PASS  every approved wish but my own, once
-PASS  my own wish is not in it
-PASS  no pending, rejected or hidden wish
-PASS  no approved-but-private wish (MIN-194)
-PASS  the first nine go like, random, latest in turn  (like,random,latest,like,random,latest,like,random,latest)
-PASS  all three pools appear
-PASS  the first like-slot wish is the most liked
-PASS  the first latest-slot wish is the newest not drawn yet
+PASS  popular with no likes anywhere: not the same as latest
+PASS  popular: answers, says its order  (popular)
+PASS  popular: every approved public wish but my own, once, across pages
+PASS  popular: never my own, pending, rejected, hidden or private
+PASS  popular: each wish is { id, text, likes, liked } (no slot)
+PASS  popular: same seed, same order page after page
+PASS  latest: answers, says its order  (latest)
+PASS  latest: every approved public wish but my own, once, across pages
+PASS  latest: never my own, pending, rejected, hidden or private
+PASS  latest: each wish is { id, text, likes, liked } (no slot)
+PASS  latest: same seed, same order page after page
+PASS  random: answers, says its order  (random)
+PASS  random: every approved public wish but my own, once, across pages
+PASS  random: never my own, pending, rejected, hidden or private
+PASS  random: each wish is { id, text, likes, liked } (no slot)
+PASS  random: same seed, same order page after page
+PASS  popular: most likes first, never rising
+PASS  popular: ties are shuffled, not newest first
+PASS  popular: another seed, another order among ties
+PASS  latest: newest first
+PASS  random: neither newest first nor by likes; another seed, another order
+PASS  no sort (an older page): popular
+PASS  unknown sort: popular
+PASS  older page's request: still mode 'mix', so it keeps its hearts
 PASS  liked flag for the asking client
-PASS  each wish carries id, text, likes, liked, slot
-PASS  same seed and time: same order
-PASS  another seed: another shuffle
-PASS  likes after `at` leave the order as it was
+PASS  popular: likes after `at` leave the order as it was
 PASS  ...while the count shown is current
 PASS  bad seed: 400
 PASS  bad client_id: 400
@@ -54,4 +65,4 @@ PASS  [off] like: 404 closed
 PASS  [off] my wish: 404 closed
 PASS  [off] feed with client_id: the old answer
 
-55/55 passed
+66/66 passed
