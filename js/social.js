@@ -37,6 +37,8 @@ export class SocialFeed {
     this.mine = document.getElementById('social-mine');
     this.skeleton = likesOn ? makeSkeleton() : null;
     if (this.skeleton) this.list.before(this.skeleton);
+    // likes on: a shorter top (no intro line), so others' wishes come up sooner
+    if (likesOn) this.dlg.classList.add('likes');
     this.onOpen = onOpen;
     this.onClose = onClose;
     this.cursor = null;
@@ -197,12 +199,16 @@ export class SocialFeed {
         item.className = 'social-wish';
         const body = document.createElement('p');
         body.textContent = wish.text; // never interpret a submitted wish as HTML
-        item.append(body);
         if (mixed) {
+          // the text (and its More, when it is cut) on the left, the heart on the right
           body.className = 'social-text';
           texts.push(body);
+          const col = document.createElement('div');
+          col.className = 'social-body';
+          col.append(body);
+          item.append(col);
           if (typeof wish.likes === 'number') item.append(this._heart(item, wish));
-        }
+        } else item.append(body);
         items.push(item);
       }
       const moreHadFocus = document.activeElement === this.more;

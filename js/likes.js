@@ -24,10 +24,16 @@ const LAST_KEY = 'oww_last_likes';
 const SVG = 'http://www.w3.org/2000/svg';
 
 const ONLY_YOU = 'Only you can see this for now.';
-const PLACEHOLDER = 'Email me when it gets ♥';
+const RECEIVED = 'Received';
+const ASK = 'Get notified';
+const ASK_WHAT = "We'll email you when people ♥ your wish.";
+const EMAIL_LABEL = 'Email address';
+const PLACEHOLDER = 'your@email.com';
 const FINE = 'Only for this. Deleted after 6 months.';
 const NOTIFY = 'Notify';
 const DONE = "✓ We'll email you.";
+const MORE = 'More';
+const LESS = 'Less';
 
 // ------------------------------------------------------------------ data
 
@@ -159,47 +165,49 @@ function sinceBadge(delta) {
 }
 
 /**
- * Long wishes are cut to a few lines; a tap on the text shows all of it and
- * another tap folds it again. Only texts that really overflow get the tap,
- * worked out for all of them at once after they are on the page: every
- * height is read first, then the attributes are written, so the list is laid
- * out once rather than once per wish.
+ * Long wishes are cut to a few lines with "More" under them; More (or a tap
+ * on the text) shows all of it, and "Less" folds it again. Only texts that
+ * really overflow get it, worked out for all of them at once after they are
+ * on the page: every height is read first, then the buttons are added, so
+ * the list is laid out once rather than once per wish.
  *
  * @param {HTMLElement[]} els texts already in the document, clamped by CSS
  */
+let expandIds = 0;
 export function makeExpandable(els) {
   const over = els.map((el) => el.scrollHeight > el.clientHeight + 1);
   els.forEach((el, i) => {
     if (!over[i]) return;
+    if (!el.id) el.id = `wish-text-${++expandIds}`;
     el.classList.add('can-open');
-    el.tabIndex = 0;
-    el.setAttribute('role', 'button');
-    el.setAttribute('aria-expanded', 'false');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'more-toggle';
+    btn.textContent = MORE;
+    btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-controls', el.id);
     const toggle = () => {
       const open = !el.classList.contains('open');
       el.classList.toggle('open', open);
-      el.setAttribute('aria-expanded', String(open));
+      btn.setAttribute('aria-expanded', String(open));
+      btn.textContent = open ? LESS : MORE;
     };
-    el.addEventListener('click', toggle);
-    el.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        toggle();
-      }
-    });
+    btn.addEventListener('click', toggle);
+    el.addEventListener('click', toggle); // a tap on the text does the same; the button is the control
+    el.after(btn);
   });
 }
 
 // ------------------------------------------------------------------ the card in the feed
 
 /**
- * The visitor's own wish, pinned at the top of the feed and no bigger than a
- * feed row or two: a small "Your wish" label, the wish on one line (a tap
- * opens it), and on the right ♥ and the number with "+3 new" (no heart to
- * press). Not approved: "Only you can see this for now." beside the label
- * and no number. Under it, unless an email is already in for this client_id,
- * a one-line field (MIN-158's storage; its notice shows while the field has
- * focus).
+ * The visitor's own wish, pinned at the top of the feed on a faint panel (no
+ * outline): a small "Your wish" label, the wish itself on up to three lines
+ * (More for the rest), and on the right "Received ♥ 12" with "+3 new", so
+ * it doesn't read as a heart they pressed. Not approved: "Only you can see
+ * this for now." beside the label and no number. Under it, unless an email
+ * is already in for this client_id, a small "Get notified" that opens the
+ * email form in place (MIN-158's storage and notice).
  *
  * @param {HTMLElement} root the empty container
  * @param {{ wish: object, email_submitted: boolean }} data from loadMyWish()
@@ -212,8 +220,8 @@ export function renderMyWish(root, data, screen) {
   card.className = 'my-wish';
   card.setAttribute('aria-label', 'Your wish');
 
-  const main = document.createElement('div');
-  main.className = 'my-wish-main';
+  const head = document.createElement('div');
+  head.className = 'my-wish-head';
   const label = document.createElement('p');
   label.className = 'my-wish-label';
   label.textContent = 'Your wish';
@@ -223,14 +231,7 @@ export function renderMyWish(root, data, screen) {
     priv.textContent = ONLY_YOU;
     label.append(' ', priv);
   }
-  const text = document.createElement('p');
-  text.className = 'my-wish-text ph-no-capture ph-mask';
-  text.textContent = wish.text; // never interpret a submitted wish as HTML
-  main.append(label, text);
-
-  const row = document.createElement('div');
-  row.className = 'my-wish-row';
-  row.append(main);
+  head.append(label);
 
   let delta = null;
   if (approved) {
@@ -238,18 +239,25 @@ export function renderMyWish(root, data, screen) {
     const count = document.createElement('p');
     count.className = 'my-wish-count';
     if (wish.likes === 0) count.classList.add('zero');
+    const word = document.createElement('span');
+    word.className = 'my-wish-received';
+    word.textContent = RECEIVED;
     const n = document.createElement('span');
     n.className = 'my-wish-n';
     n.append(heart(), ` ${wish.likes}`);
-    count.append(n);
+    count.append(word, ' ', n);
     const badge = sinceBadge(delta);
-    if (badge) count.append(badge);
-    count.setAttribute('aria-label', `${wish.likes} likes${delta > 0 ? `, ${delta} new` : ''}`);
-    row.append(count);
+    if (badge) count.append(' ', badge);
+    count.setAttribute('aria-label', `Received ${wish.likes} likes${delta > 0 ? `, ${delta} new` : ''}`);
+    head.append(count);
     rememberShown(wish.likes);
   }
-  card.append(row);
-  if (!data.email_submitted) card.append(emailRow(screen));
+
+  const text = document.createElement('p');
+  text.className = 'my-wish-text ph-no-capture ph-mask';
+  text.textContent = wish.text; // never interpret a submitted wish as HTML
+  card.append(head, text);
+  if (!data.email_submitted) card.append(emailAsk(screen));
   root.replaceChildren(card);
   root.hidden = false;
   makeExpandable([text]);
@@ -258,20 +266,39 @@ export function renderMyWish(root, data, screen) {
 }
 
 /**
- * The email ask as one line: the field and its button, nothing to read
- * first. email_cta_shown goes once the line is actually on screen.
+ * The email ask: only a small "Get notified" until it is pressed, then, in
+ * the card, what it is for, an "Email address" field with its button, and
+ * the six-month notice. email_cta_shown goes once the button is on screen.
  */
-function emailRow(screen) {
+function emailAsk(screen) {
   const box = document.createElement('div');
   box.className = 'my-wish-email';
+  const formId = 'my-wish-form';
+
+  const ask = document.createElement('button');
+  ask.type = 'button';
+  ask.className = 'my-wish-ask';
+  ask.textContent = ASK;
+  ask.setAttribute('aria-expanded', 'false');
+  ask.setAttribute('aria-controls', formId);
 
   const form = document.createElement('form');
+  form.id = formId;
   form.className = 'my-wish-form';
   form.noValidate = true;
+  form.hidden = true;
+  const what = document.createElement('p');
+  what.className = 'my-wish-what';
+  what.textContent = ASK_WHAT;
+  const label = document.createElement('label');
+  label.className = 'my-wish-field-label';
+  label.htmlFor = 'my-wish-input';
+  label.textContent = EMAIL_LABEL;
+  const row = document.createElement('div');
+  row.className = 'my-wish-row';
   const input = document.createElement('input');
-  Object.assign(input, { type: 'email', name: 'email', placeholder: PLACEHOLDER, autocomplete: 'email', maxLength: 254, spellcheck: false });
+  Object.assign(input, { id: 'my-wish-input', type: 'email', name: 'email', placeholder: PLACEHOLDER, autocomplete: 'email', maxLength: 254, spellcheck: false });
   input.className = 'my-wish-input ph-no-capture ph-mask';
-  input.setAttribute('aria-label', 'Your email, to hear when your wish gets likes');
   input.setAttribute('inputmode', 'email');
   input.setAttribute('autocapitalize', 'off');
   input.setAttribute('enterkeyhint', 'send');
@@ -280,16 +307,16 @@ function emailRow(screen) {
   submit.type = 'submit';
   submit.className = 'my-wish-submit';
   submit.textContent = NOTIFY;
-  form.append(input, submit);
-
-  const fine = document.createElement('p');
-  fine.id = 'my-wish-fine';
-  fine.className = 'my-wish-fine';
-  fine.textContent = FINE;
+  row.append(input, submit);
   const error = document.createElement('p');
   error.id = 'my-wish-error';
   error.className = 'my-wish-error';
   error.setAttribute('role', 'alert');
+  const fine = document.createElement('p');
+  fine.id = 'my-wish-fine';
+  fine.className = 'my-wish-fine';
+  fine.textContent = FINE;
+  form.append(what, label, row, error, fine);
 
   const done = document.createElement('p');
   done.className = 'my-wish-done';
@@ -297,6 +324,12 @@ function emailRow(screen) {
   done.textContent = DONE;
   done.hidden = true;
 
+  ask.addEventListener('click', () => {
+    const open = form.hidden;
+    form.hidden = !open;
+    ask.setAttribute('aria-expanded', String(open));
+    if (open) input.focus({ preventScroll: true });
+  });
   const showError = (msg) => {
     error.textContent = msg;
     if (msg) input.setAttribute('aria-invalid', 'true');
@@ -324,9 +357,8 @@ function emailRow(screen) {
       track('email_submitted', { screen, source: 'feed_my_wish' });
       emailLeft();
       input.value = '';
+      ask.hidden = true;
       form.hidden = true;
-      fine.hidden = true;
-      error.hidden = true;
       done.hidden = false;
       done.tabIndex = -1;
       done.focus({ preventScroll: true });
@@ -341,10 +373,10 @@ function emailRow(screen) {
       io.disconnect();
       track('email_cta_shown');
     }, { threshold: 0.6 });
-    io.observe(form);
+    io.observe(ask);
   } else track('email_cta_shown');
 
-  box.append(form, fine, error, done);
+  box.append(ask, form, done);
   return box;
 }
 

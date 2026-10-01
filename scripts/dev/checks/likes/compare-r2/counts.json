@@ -1,0 +1,6 @@
+{
+  "viewport": "390x844, DPR 2, touch; the feed opened from the revisit screen, approved card, scrolled to the top",
+  "before": { "build": "cf82a03", "wishes_started_on_first_screen": 6, "wishes_whole_on_first_screen": 5, "card_px": 119, "average_row_px": 92 },
+  "after": { "wishes_started_on_first_screen": 6, "wishes_whole_on_first_screen": 5, "card_px": 161, "average_row_px": 94 },
+  "note": "the card now shows up to three lines of the wish; the shorter top (no intro, tighter title) pays for it"
+}

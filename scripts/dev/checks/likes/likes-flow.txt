@@ -13,32 +13,35 @@ PASS  [m] revisit_toast_shown: like_count 12, like_delta 3
 PASS  [m] revisit_toast_clicked with like_count, like_delta
 PASS  [m] social_feed_opened: entry revisit_toast, has_my_wish  ({"screen":"revisit","entry":"revisit_toast","has_my_wish":true})
 PASS  [m] my wish card: at the top, the wish, "♥ 12" and "+3 new"  (12 +3 new)
-PASS  [m] my wish card: the wish on one line  (1)
-PASS  [m] my wish card: no taller than two feed rows  (119 vs rows of 75)
+PASS  [m] my wish card: up to three lines of the wish, upright, no outline  ({"l":3,"o":"0px"})
+PASS  [m] my wish card: "Received ♥ 12", not a bare heart
 PASS  [m] my wish card: no heart to press, masked in replays
 PASS  [m] my wish is not in the list
+PASS  [m] the top is shorter: no intro line
 PASS  [m] my_wish_viewed: approved, like_count 12, like_delta 3
-PASS  [m] email: one line, field and button at once ("Email me when it gets ♥", Notify)
-PASS  [m] email_cta_shown sent once the line is on screen
-PASS  [m] my wish card: a tap shows the whole wish  ({"e":"true","lines":2})
-PASS  [m] my wish card: another tap folds it
+PASS  [m] email: only a small "Get notified" until pressed
+PASS  [m] email_cta_shown sent once the button is on screen
+PASS  [m] my wish card: "More" shows the whole wish, then reads "Less"  ({"e":"true","label":"Less","lines":4})
+PASS  [m] my wish card: "Less" folds it
 PASS  [m] every wish has a heart and a number only
 PASS  [m] the first wish is the most liked (12)  (12)
 PASS  [m] two pages: all 30 others, none twice
-PASS  [m] rows: heart on the right, at least 44×44, centred on the first line  ({"right":true,"w":60.046875,"h":44,"off":0.012500000000045475})
-PASS  [m] "line one…": cut to 3 lines, the text itself untouched (line breaks kept)  ({"can":true,"role":"button","expanded":"false","lines":3})
-PASS  [m] "line one…": a tap shows all of it  (8 lines)
+PASS  [m] rows: heart on the right, at least 44×44, centred on the first line  ({"right":true,"w":60.046875,"h":44,"off":0.009374999999977263})
+PASS  [m] "line one…": cut to 3 lines, the text itself untouched (line breaks kept)  ({"can":true,"more":"More","expanded":"false","upright":"normal","lines":3})
+PASS  [m] "line one…": "More" shows all of it, then reads "Less"  (8 lines)
 PASS  [m] "line one…": the heart beside it doesn't fold it
-PASS  [m] "line one…": another tap folds it to 3 lines
-PASS  [m] "매일 아침…": cut to 3 lines, the text itself untouched (line breaks kept)  ({"can":true,"role":"button","expanded":"false","lines":3})
-PASS  [m] "매일 아침…": a tap shows all of it  (4 lines)
+PASS  [m] "line one…": "Less" folds it to 3 lines
+PASS  [m] "line one…": a tap on the text opens it too
+PASS  [m] "매일 아침…": cut to 3 lines, the text itself untouched (line breaks kept)  ({"can":true,"more":"More","expanded":"false","upright":"normal","lines":3})
+PASS  [m] "매일 아침…": "More" shows all of it, then reads "Less"  (4 lines)
 PASS  [m] "매일 아침…": the heart beside it doesn't fold it
-PASS  [m] "매일 아침…": another tap folds it to 3 lines
-PASS  [m] wishes of three lines or less get no tap to open  (25 short)
+PASS  [m] "매일 아침…": "Less" folds it to 3 lines
+PASS  [m] "매일 아침…": a tap on the text opens it too
+PASS  [m] wishes of three lines or less get no "More"  (25 short)
 PASS  [m] like: +1 at once, pressed
 PASS  [m] like: the little beat runs
 PASS  [m] like: one row in likes
-PASS  [m] wish_liked: wish_id, position 2, slot random  ({"wish_id":25,"position":2,"slot":"random"})
+PASS  [m] wish_liked: wish_id, position 2, slot random  ({"wish_id":10,"position":2,"slot":"random"})
 PASS  [m] two quick taps: still liked, still one row
 PASS  [m] offline unlike: shown at once…
 PASS  [m] …then back to liked, count restored
@@ -48,7 +51,8 @@ PASS  [m] after a reload: the card shows no increase (nothing new)
 PASS  [m] unlike: no row
 PASS  [m] wish_unliked: wish_id, position, slot
 PASS  [m] after a reload: not liked  (false)
-PASS  [m] email: the 6-month notice shows while the field has focus
+PASS  [m] email: "Get notified" opens the form in the card: what it is for, "Email address", the field
+PASS  [m] email: the 6-month notice is in the open form
 PASS  [m] email: a bad address is refused
 PASS  [m] email: the line becomes "✓ We'll email you."
 PASS  [m] email: stored for this client_id, lower-cased
@@ -66,12 +70,12 @@ PASS  [m] pending: nothing stored for the increase
 PASS  [m] approved, 0 likes: toast has only the button
 PASS  [m] approved, 0 likes: the card shows a faint ♥ 0
 PASS  [m] no wish found: no toast
-PASS  [m] wish screen → feed: up within 200 ms  (80 ms)
+PASS  [m] wish screen → feed: up within 200 ms  (88 ms)
 PASS  [m] wish screen → feed: no errors
 PASS  [m] wish screen → feed: no request for a wish that isn't made yet  (/api/social)
 PASS  [m] wish screen: entry input_screen, has_my_wish false
 PASS  [m] no wish yet: no card
-PASS  [m] wish screen → feed, CPU ×4: up within 200 ms  (72 ms)
+PASS  [m] wish screen → feed, CPU ×4: up within 200 ms  (77 ms)
 PASS  [m] wish screen → feed, CPU ×4: still no errors
 PASS  [m] the draft is still there after the feed
 PASS  [m] the ending is as it was: lines, Share, no likes toast  ({"main":"Wait up to 24 hours for your wish to come true.","sub":"After granting your wish, the One Wish Willow™ loses its magical properties.","toast":false,"share":"Share","others":"See others' wishes"})
@@ -99,27 +103,29 @@ PASS  [d] revisit_toast_shown: like_count 12, like_delta 3
 PASS  [d] revisit_toast_clicked with like_count, like_delta
 PASS  [d] social_feed_opened: entry revisit_toast, has_my_wish  ({"screen":"revisit","entry":"revisit_toast","has_my_wish":true})
 PASS  [d] my wish card: at the top, the wish, "♥ 12" and "+3 new"  (12 +3 new)
-PASS  [d] my wish card: the wish on one line  (1)
-PASS  [d] my wish card: no taller than two feed rows  (119 vs rows of 75)
+PASS  [d] my wish card: up to three lines of the wish, upright, no outline  ({"l":2,"o":"0px"})
+PASS  [d] my wish card: "Received ♥ 12", not a bare heart
 PASS  [d] my wish card: no heart to press, masked in replays
 PASS  [d] my wish is not in the list
+PASS  [d] the top is shorter: no intro line
 PASS  [d] my_wish_viewed: approved, like_count 12, like_delta 3
-PASS  [d] email: one line, field and button at once ("Email me when it gets ♥", Notify)
-PASS  [d] email_cta_shown sent once the line is on screen
+PASS  [d] email: only a small "Get notified" until pressed
+PASS  [d] email_cta_shown sent once the button is on screen
 PASS  [d] my wish card: the wish fits its one line, so no tap to open
 PASS  [d] every wish has a heart and a number only
 PASS  [d] the first wish is the most liked (12)  (12)
 PASS  [d] two pages: all 30 others, none twice
-PASS  [d] rows: heart on the right, at least 44×44, centred on the first line  ({"right":true,"w":60.046875,"h":44,"off":0.012500000000045475})
-PASS  [d] "line one…": cut to 3 lines, the text itself untouched (line breaks kept)  ({"can":true,"role":"button","expanded":"false","lines":3})
-PASS  [d] "line one…": a tap shows all of it  (8 lines)
+PASS  [d] rows: heart on the right, at least 44×44, centred on the first line  ({"right":true,"w":60.046875,"h":44,"off":0.009374999999977263})
+PASS  [d] "line one…": cut to 3 lines, the text itself untouched (line breaks kept)  ({"can":true,"more":"More","expanded":"false","upright":"normal","lines":3})
+PASS  [d] "line one…": "More" shows all of it, then reads "Less"  (8 lines)
 PASS  [d] "line one…": the heart beside it doesn't fold it
-PASS  [d] "line one…": another tap folds it to 3 lines
-PASS  [d] wishes of three lines or less get no tap to open  (25 short)
+PASS  [d] "line one…": "Less" folds it to 3 lines
+PASS  [d] "line one…": a tap on the text opens it too
+PASS  [d] wishes of three lines or less get no "More"  (25 short)
 PASS  [d] like: +1 at once, pressed
 PASS  [d] like: the little beat runs
 PASS  [d] like: one row in likes
-PASS  [d] wish_liked: wish_id, position 2, slot random  ({"wish_id":24,"position":2,"slot":"random"})
+PASS  [d] wish_liked: wish_id, position 2, slot random  ({"wish_id":3,"position":2,"slot":"random"})
 PASS  [d] two quick taps: still liked, still one row
 PASS  [d] offline unlike: shown at once…
 PASS  [d] …then back to liked, count restored
@@ -129,7 +135,8 @@ PASS  [d] after a reload: the card shows no increase (nothing new)
 PASS  [d] unlike: no row
 PASS  [d] wish_unliked: wish_id, position, slot
 PASS  [d] after a reload: not liked  (false)
-PASS  [d] email: the 6-month notice shows while the field has focus
+PASS  [d] email: "Get notified" opens the form in the card: what it is for, "Email address", the field
+PASS  [d] email: the 6-month notice is in the open form
 PASS  [d] email: a bad address is refused
 PASS  [d] email: the line becomes "✓ We'll email you."
 PASS  [d] email: stored for this client_id, lower-cased
@@ -147,7 +154,7 @@ PASS  [d] pending: nothing stored for the increase
 PASS  [d] approved, 0 likes: toast has only the button
 PASS  [d] approved, 0 likes: the card shows a faint ♥ 0
 PASS  [d] no wish found: no toast
-PASS  [d] wish screen → feed: up within 200 ms  (72 ms)
+PASS  [d] wish screen → feed: up within 200 ms  (80 ms)
 PASS  [d] wish screen → feed: no errors
 PASS  [d] wish screen → feed: no request for a wish that isn't made yet  (/api/social)
 PASS  [d] wish screen: entry input_screen, has_my_wish false
@@ -166,4 +173,4 @@ PASS  [d] switch off: the feed reads the same as main
 PASS  [d] switch off: the same requests as main
 PASS  [d] switch off: the same feed event as main
 
-163/163 passed
+170/170 passed
