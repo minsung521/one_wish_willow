@@ -50,6 +50,10 @@ const TEXTS = [
   'To finally finish the novel I started ten years ago.',
   '우리 강아지가 오래 살기를',
 ];
+const squash = (t) => (t || '').replace(/\s+/g, ' ').trim();
+// the long ones for the three-line cut: 140 characters, and many line breaks
+const LONG = '매일 아침 가족이 모두 건강하게 웃으며 일어나기를. I wish my little brother gets into the art school he dreams of, and that Mom finally takes a real vacation.'.slice(0, 140);
+const LINES = 'line one\nline two\n\nline four\nline five\n\n\nline eight';
 const ME = randomUUID();
 let ids = {};
 
@@ -64,7 +68,10 @@ async function seed({ myStatus = 'approved', myLikes = 0 } = {}) {
     return Number(rows[0].id);
   };
   ids = { approved: [] };
-  for (let i = 0; i < 30; i++) ids.approved.push(await add(i < TEXTS.length ? TEXTS[i] : `TEST approved wish #${i + 1}`, randomUUID(), 'approved'));
+  for (let i = 0; i < 30; i++) {
+    const text = i < TEXTS.length ? TEXTS[i] : i === 28 ? LINES : i === 29 ? LONG : `TEST approved wish #${i + 1}`;
+    ids.approved.push(await add(text, randomUUID(), 'approved'));
+  }
   ids.pending = await add('TEST someone else, pending', randomUUID(), 'pending');
   if (myStatus) ids.mine = await add('I wish I could hear my grandmother laugh once more.', ME, myStatus);
   // a spread of likes, so the most-liked order isn't the newest
@@ -141,6 +148,47 @@ const boxOf = (page, sel) => page.evaluate((s) => {
   const r = el.getBoundingClientRect();
   return r.width && r.height ? { top: r.top, bottom: r.bottom, left: r.left, right: r.right } : null;
 }, sel);
+/**
+ * Tap `sel` with the CPU slowed `rate` times, and return how long the tap
+ * took to show on screen: the longest Event Timing entry for it (input to the
+ * next paint, what INP measures), or the time to the second frame after the
+ * dialog opened, whichever is longer.
+ */
+async function openTimed(page, sel, device, rate) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate });
+  await page.evaluate(() => {
+    window.__timing = { inp: 0, painted: 0, t0: 0 };
+    new PerformanceObserver((list) => {
+      for (const e of list.getEntries()) if (['pointerdown', 'pointerup', 'click', 'touchend', 'mousedown', 'mouseup'].includes(e.name)) window.__timing.inp = Math.max(window.__timing.inp, e.duration);
+    }).observe({ type: 'event', durationThreshold: 16 });
+    const d = document.getElementById('social');
+    const start = (e) => { if (!window.__timing.t0) window.__timing.t0 = e.timeStamp; };
+    document.addEventListener('pointerdown', start, { capture: true, once: true });
+    new MutationObserver((_, mo) => {
+      if (!d.open) return;
+      mo.disconnect();
+      requestAnimationFrame(() => requestAnimationFrame(() => { window.__timing.painted = performance.now() - window.__timing.t0; }));
+    }).observe(d, { attributes: true, attributeFilter: ['open'] });
+  });
+  await tap(page, sel, device);
+  await page.waitForFunction(() => window.__timing.painted > 0, null, { timeout: 10000 });
+  await page.waitForTimeout(400); // let the Event Timing entries arrive
+  const t = await page.evaluate(() => window.__timing);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+  await cdp.detach();
+  return Math.round(Math.max(t.inp, t.painted));
+}
+/** The feed's every page: the shuffle changes on each opening, so a wish may be on any of them. */
+async function loadAll(page, device) {
+  for (let n = 0; n < 5 && (await page.isVisible('#social-more')); n++) {
+    const before = await page.locator('#social-list > li').count();
+    await page.locator('#social-more').scrollIntoViewIfNeeded();
+    await tap(page, '#social-more', device);
+    await page.waitForFunction((k) => document.querySelectorAll('#social-list > li').length > k, before, { timeout: 10000 });
+    await page.waitForTimeout(300);
+  }
+}
 const overlaps = (a, b) => !!(a && b && a.top < b.bottom && b.top < a.bottom && a.left < b.right && b.left < a.right);
 
 // ================================================================ 1. approved wish with likes: toast, card, hearts
@@ -155,9 +203,9 @@ async function approvedFlow(device, tag) {
   await toRevisit(page);
   await page.waitForSelector('#likes-toast.on', { timeout: 8000 });
   await page.waitForTimeout(1000);
-  const line1 = (await page.textContent('#likes-toast-line')).trim();
-  check(`[${tag}] revisit toast: "9 people wished for this too.", no increase on the first look`,
-    line1 === '9 people wished for this too.', line1);
+  const line1 = squash(await page.textContent('#likes-toast-line'));
+  check(`[${tag}] revisit toast: "Your wish got ♥ 9", no increase on the first look`,
+    line1 === 'Your wish got 9' && !!(await page.$('#likes-toast-line svg.heart')), line1);
   check(`[${tag}] revisit toast: the button is there`, await visible(page, '#likes-toast-go'));
   const toast = await boxOf(page, '#likes-toast');
   const clear = !overlaps(toast, await boxOf(page, '#ending-main')) && !overlaps(toast, await boxOf(page, '#ending-sub'))
@@ -177,8 +225,9 @@ async function approvedFlow(device, tag) {
   await toRevisit(page);
   await page.waitForSelector('#likes-toast.on', { timeout: 8000 });
   await page.waitForTimeout(1000);
-  const line2 = (await page.textContent('#likes-toast-line')).trim();
-  check(`[${tag}] return visit: "12 people… (+3 since your last visit)"`, line2 === '12 people wished for this too. (+3 since your last visit)', line2);
+  const line2 = squash(await page.textContent('#likes-toast-line'));
+  check(`[${tag}] return visit: "Your wish got ♥ 12 +3 new"`, line2 === 'Your wish got 12 +3 new', line2);
+  check(`[${tag}] no "people wished for this too" anywhere`, !(await page.evaluate(() => document.body.innerText.includes('wished for this too'))));
   e = await lastEvent(page, 'revisit_toast_shown');
   check(`[${tag}] revisit_toast_shown: like_count 12, like_delta 3`, e && e.props.like_count === 12 && e.props.like_delta === 3);
   await shot(page, `${tag}-01-revisit-toast-likes`);
@@ -196,22 +245,43 @@ async function approvedFlow(device, tag) {
     const first = document.querySelector('#social-list > li');
     return {
       text: c.querySelector('.my-wish-text').textContent,
-      count: c.querySelector('.my-wish-count').textContent.trim(),
+      count: c.querySelector('.my-wish-n').textContent.trim(),
+      since: c.querySelector('.likes-since') && c.querySelector('.likes-since').textContent,
       heartButton: !!c.querySelector('button.social-like'),
       above: c.getBoundingClientRect().bottom <= first.getBoundingClientRect().top,
       masked: c.querySelector('.my-wish-text').classList.contains('ph-mask'),
       inList: [...document.querySelectorAll('#social-list p')].some((p) => p.textContent.includes('grandmother laugh')),
-      cta: c.querySelector('.my-wish-ask') && c.querySelector('.my-wish-ask').textContent,
+      input: c.querySelector('.my-wish-input') && c.querySelector('.my-wish-input').placeholder,
+      submit: c.querySelector('.my-wish-submit') && c.querySelector('.my-wish-submit').textContent,
+      fine: !!(c.querySelector('.my-wish-fine') && c.querySelector('.my-wish-fine').offsetHeight),
+      oneLine: (() => { const t = c.querySelector('.my-wish-text'); return Math.round(t.clientHeight / parseFloat(getComputedStyle(t).lineHeight)); })(),
+      cardH: c.getBoundingClientRect().height,
+      rowH: (() => { const r = [...document.querySelectorAll('#social-list > li')].slice(0, 6).map((li) => li.getBoundingClientRect().height); return r.reduce((a, b) => a + b, 0) / r.length; })(),
     };
   });
-  check(`[${tag}] my wish card: at the top, the wish, the count with the increase`,
-    card.above && card.text.includes('grandmother laugh') && card.count === '12 people wished for this too. (+3 since your last visit)', card.count);
+  check(`[${tag}] my wish card: at the top, the wish, "♥ 12" and "+3 new"`,
+    card.above && card.text.includes('grandmother laugh') && card.count === '12' && card.since === '+3 new', `${card.count} ${card.since}`);
+  check(`[${tag}] my wish card: the wish on one line`, card.oneLine === 1, String(card.oneLine));
+  check(`[${tag}] my wish card: no taller than two feed rows`, card.cardH <= 2 * card.rowH, `${Math.round(card.cardH)} vs rows of ${Math.round(card.rowH)}`);
   check(`[${tag}] my wish card: no heart to press, masked in replays`, !card.heartButton && card.masked);
   check(`[${tag}] my wish is not in the list`, !card.inList);
   e = await lastEvent(page, 'my_wish_viewed');
   check(`[${tag}] my_wish_viewed: approved, like_count 12, like_delta 3`, e && e.props.status === 'approved' && e.props.like_count === 12 && e.props.like_delta === 3 && e.props.display_like_count === 12);
-  check(`[${tag}] email ask shown, email_cta_shown sent`,
-    card.cta === "Want to know how many people wish for this too? We'll email you." && !!(await lastEvent(page, 'email_cta_shown')));
+  check(`[${tag}] email: one line, field and button at once ("Email me when it gets ♥", Notify)`,
+    card.input === 'Email me when it gets ♥' && card.submit === 'Notify' && !card.fine);
+  check(`[${tag}] email_cta_shown sent once the line is on screen`, (await events(page)).filter((x) => x.event === 'email_cta_shown').length === 1);
+  // the card's one line opens on a tap, and folds again (when it doesn't fit; on a desktop it may)
+  const fits = await page.evaluate(() => !document.querySelector('.my-wish-text').classList.contains('can-open'));
+  if (fits) {
+    check(`[${tag}] my wish card: the wish fits its one line, so no tap to open`,
+      await page.evaluate(() => { const t = document.querySelector('.my-wish-text'); return t.scrollHeight <= t.clientHeight + 1 && t.getAttribute('role') === null; }));
+  } else {
+  await tap(page, '.my-wish-text', device);
+  const opened = await page.evaluate(() => { const t = document.querySelector('.my-wish-text'); return { e: t.getAttribute('aria-expanded'), lines: Math.round(t.clientHeight / parseFloat(getComputedStyle(t).lineHeight)) }; });
+  check(`[${tag}] my wish card: a tap shows the whole wish`, opened.e === 'true' && opened.lines >= 2, JSON.stringify(opened));
+  await tap(page, '.my-wish-text', device);
+  check(`[${tag}] my wish card: another tap folds it`, (await page.getAttribute('.my-wish-text', 'aria-expanded')) === 'false');
+  }
   await page.evaluate(() => { document.getElementById('social').scrollTop = 0; });
   await shot(page, `${tag}-02-feed-my-wish-approved`);
 
@@ -229,6 +299,52 @@ async function approvedFlow(device, tag) {
   await page.waitForFunction(() => document.querySelectorAll('#social-list > li').length >= 30);
   const all = await page.evaluate(() => [...document.querySelectorAll('#social-list > li p')].map((p) => p.textContent));
   check(`[${tag}] two pages: all 30 others, none twice`, all.length === 30 && new Set(all).size === 30 && ids1.every((t, i) => all[i] === t));
+
+  // rows: the wish left, the heart right at the first line, 44×44 to touch
+  const rowShape = await page.evaluate(() => [...document.querySelectorAll('#social-list > li')].slice(0, 8).map((li) => {
+    const p = li.querySelector('.social-text').getBoundingClientRect();
+    const b = li.querySelector('.social-like').getBoundingClientRect();
+    const lh = parseFloat(getComputedStyle(li.querySelector('.social-text')).lineHeight);
+    return { right: b.left >= p.right - 1, w: b.width, h: b.height, off: Math.abs((b.top + b.height / 2) - (p.top + lh / 2)) };
+  }));
+  check(`[${tag}] rows: heart on the right, at least 44×44, centred on the first line`,
+    rowShape.every((r) => r.right && r.w >= 44 && r.h >= 44 && r.off <= 2), JSON.stringify(rowShape[0]));
+
+  // three lines at most; a tap opens the rest, another folds it
+  const textOf = (start) => `#social-list > li:nth-child(${all.findIndex((t) => t.startsWith(start)) + 1}) .social-text`;
+  const state = (sel) => page.evaluate((q) => {
+    const el = document.querySelector(q);
+    const lh = parseFloat(getComputedStyle(el).lineHeight);
+    return { can: el.classList.contains('can-open'), role: el.getAttribute('role'), expanded: el.getAttribute('aria-expanded'), lines: Math.round(el.clientHeight / lh), text: el.textContent };
+  }, sel);
+  const cases = [['line one', LINES, 8]];
+  if (tag === 'm') cases.push(['매일 아침', LONG, 4]);
+  for (const [start, original, full] of cases) {
+    const sel = textOf(start);
+    await page.locator(sel).scrollIntoViewIfNeeded();
+    let st = await state(sel);
+    check(`[${tag}] "${start}…": cut to 3 lines, the text itself untouched (line breaks kept)`,
+      st.can && st.role === 'button' && st.expanded === 'false' && st.lines === 3 && st.text === original, JSON.stringify({ ...st, text: undefined }));
+    if (start === 'line one') await shot(page, `${tag}-10-feed-clamped`);
+    await tap(page, sel, device);
+    st = await state(sel);
+    check(`[${tag}] "${start}…": a tap shows all of it`, st.expanded === 'true' && st.lines >= full, `${st.lines} lines`);
+    if (start === 'line one') { await page.locator(sel).scrollIntoViewIfNeeded(); await shot(page, `${tag}-11-feed-expanded`); }
+    // the heart beside it is its own target
+    const heartSel = sel.replace('.social-text', '.social-like');
+    await tap(page, heartSel, device);
+    await page.waitForTimeout(500);
+    check(`[${tag}] "${start}…": the heart beside it doesn't fold it`, (await state(sel)).expanded === 'true');
+    await tap(page, heartSel, device); // and back to no like
+    await page.waitForTimeout(500);
+    await tap(page, sel, device);
+    st = await state(sel);
+    check(`[${tag}] "${start}…": another tap folds it to 3 lines`, st.expanded === 'false' && st.lines === 3);
+  }
+  const shortOnes = await page.evaluate(() => [...document.querySelectorAll('#social-list .social-text')]
+    .filter((el) => el.textContent.length < 40 && !el.textContent.includes('\n'))
+    .map((el) => ({ can: el.classList.contains('can-open'), role: el.getAttribute('role'), tab: el.tabIndex })));
+  check(`[${tag}] wishes of three lines or less get no tap to open`, shortOnes.length > 5 && shortOnes.every((x) => !x.can && x.role === null && x.tab === -1), `${shortOnes.length} short`);
   await page.evaluate(() => { document.getElementById('social').scrollTop = 0; });
 
   // like the second wish: count +1 at once, pressed, stored
@@ -270,13 +386,14 @@ async function approvedFlow(device, tag) {
   await waitFeed(page);
   e = await lastEvent(page, 'social_feed_opened');
   check(`[${tag}] Share's button: entry revisit_button`, e && e.props.entry === 'revisit_button' && e.props.has_my_wish === true);
+  await loadAll(page, device);
   let liked = await page.evaluate((t) => {
     const li = [...document.querySelectorAll('#social-list > li')].find((x) => x.querySelector('p').textContent === t);
     return li ? li.querySelector('.social-like').getAttribute('aria-pressed') : 'missing';
   }, all[1]);
   check(`[${tag}] after a reload: still liked`, liked === 'true', liked);
   check(`[${tag}] after a reload: the card shows no increase (nothing new)`,
-    (await page.textContent('.my-wish-count')).trim() === '12 people wished for this too.');
+    (await page.textContent('.my-wish-n')).trim() === '12' && !(await page.$('.my-wish .likes-since')));
 
   // unlike it, reload: off
   const sel = await page.evaluate((t) => {
@@ -293,28 +410,29 @@ async function approvedFlow(device, tag) {
   await page.waitForSelector('#share.on', { timeout: 20000 });
   await tap(page, '#others-btn', device);
   await waitFeed(page);
+  await loadAll(page, device);
   liked = await page.evaluate((t) => {
     const li = [...document.querySelectorAll('#social-list > li')].find((x) => x.querySelector('p').textContent === t);
     return li ? li.querySelector('.social-like').getAttribute('aria-pressed') : 'missing';
   }, all[1]);
   check(`[${tag}] after a reload: not liked`, liked === 'false', liked);
 
-  // the email ask, inside the card
-  await page.waitForSelector('.my-wish-ask');
-  await tap(page, '.my-wish-ask', device);
-  await page.waitForTimeout(500);
-  check(`[${tag}] email: the field opens inside the card, no dialog`,
-    await visible(page, '.my-wish .interest-input') && !(await page.evaluate(() => document.getElementById('interest').open)));
-  check(`[${tag}] email: the 6-month notice is under the field`, (await page.textContent('.my-wish .interest-fine')) === 'Only for this. Deleted after 6 months.');
-  await page.fill('.my-wish .interest-input', 'not an email');
-  await tap(page, '.my-wish .interest-submit', device);
-  check(`[${tag}] email: a bad address is refused`, (await page.textContent('.my-wish .interest-error')) === 'Please check your email address.');
-  await page.evaluate(() => document.activeElement && document.activeElement.blur());
+  // the email line, inside the card
+  await page.evaluate(() => { document.getElementById('social').scrollTop = 0; });
+  await tap(page, '.my-wish-input', device);
   await page.waitForTimeout(300);
-  await shot(page, `${tag}-04-feed-email-open`);
-  await page.fill('.my-wish .interest-input', 'OWW.Test@Example.com');
-  await tap(page, '.my-wish .interest-submit', device);
+  check(`[${tag}] email: the 6-month notice shows while the field has focus`,
+    await visible(page, '.my-wish-fine') && (await page.textContent('.my-wish-fine')) === 'Only for this. Deleted after 6 months.'
+      && !(await page.evaluate(() => document.getElementById('interest').open)));
+  await shot(page, `${tag}-04-feed-email-focus`);
+  await page.fill('.my-wish-input', 'not an email');
+  await tap(page, '.my-wish-submit', device);
+  check(`[${tag}] email: a bad address is refused`, (await page.textContent('.my-wish-error')) === 'Please check your email address.');
+  await page.fill('.my-wish-input', 'OWW.Test@Example.com');
+  await tap(page, '.my-wish-submit', device);
   await page.waitForSelector('.my-wish-done:not([hidden])', { timeout: 8000 });
+  check(`[${tag}] email: the line becomes "✓ We'll email you."`,
+    (await page.textContent('.my-wish-done')) === "✓ We'll email you." && !(await visible(page, '.my-wish-form')) && !(await visible(page, '.my-wish-fine')));
   const row = (await db.query('select email from social_interest where client_id = $1', [ME])).rows[0];
   check(`[${tag}] email: stored for this client_id, lower-cased`, row && row.email === 'oww.test@example.com');
   e = await lastEvent(page, 'email_submitted');
@@ -326,7 +444,7 @@ async function approvedFlow(device, tag) {
   if (!(await feedOpen(page))) { await page.mouse.click(5, 5); await page.waitForTimeout(300); await tap(page, '#others-btn', device); }
   await waitFeed(page);
   await page.waitForSelector('.my-wish');
-  check(`[${tag}] email in: the card no longer asks`, !(await page.$('.my-wish-ask')));
+  check(`[${tag}] email in: the next time, no email line at all`, !(await page.$('.my-wish-email')) && !(await page.$('.my-wish-done')));
   await page.keyboard.press('Escape');
 
   // closing the toast
@@ -376,6 +494,11 @@ async function quietFlow(device, tag) {
   await toRevisit(page2);
   await page2.waitForSelector('#likes-toast.on', { timeout: 8000 });
   check(`[${tag}] approved, 0 likes: toast has only the button`, !(await visible(page2, '#likes-toast-line')) && await visible(page2, '#likes-toast-go'));
+  await tap(page2, '#likes-toast-go', device);
+  await waitFeed(page2);
+  await page2.waitForSelector('.my-wish');
+  check(`[${tag}] approved, 0 likes: the card shows a faint ♥ 0`,
+    (await page2.textContent('.my-wish-n')).trim() === '0' && await page2.evaluate(() => document.querySelector('.my-wish-count').classList.contains('zero')));
   await ctx2.close();
 
   // no wish under this client_id (it was made in another browser): no toast at all
@@ -395,15 +518,34 @@ async function wishFlow(device, tag) {
   await page.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.wish.field-on', { timeout: 20000 });
   await page.waitForTimeout(1900);
-  await tap(page, '#wish-others', device);
+  const errors = [];
+  page.on('pageerror', (er) => errors.push(er.message));
+  page.on('console', (m) => { if (m.type() === 'error' && !/ERR_FAILED/.test(m.text())) errors.push(m.text()); });
+  const calls = [];
+  page.on('request', (r) => { if (r.url().includes('/api/')) calls.push(new URL(r.url()).pathname); });
+  // the reported path: the wish field up with a draft in it (keyboard put away), then "See others' wishes"
+  await page.fill('#wish-input', 'a draft');
+  await page.evaluate(() => document.activeElement && document.activeElement.blur());
+  await page.waitForTimeout(800);
+  const ms = await openTimed(page, '#wish-others', device, 1);
   await waitFeed(page);
   await page.waitForTimeout(500);
+  check(`[${tag}] wish screen → feed: up within 200 ms`, ms < 200, `${ms} ms`);
+  check(`[${tag}] wish screen → feed: no errors`, errors.length === 0, errors.join(' | '));
+  check(`[${tag}] wish screen → feed: no request for a wish that isn't made yet`, !calls.includes('/api/my-wish'), calls.join(' '));
   let e = await lastEvent(page, 'social_feed_opened');
   check(`[${tag}] wish screen: entry input_screen, has_my_wish false`, e && e.props.entry === 'input_screen' && e.props.has_my_wish === false && e.props.screen === 'wish');
   check(`[${tag}] no wish yet: no card`, !(await visible(page, '#social-mine')));
   await page.keyboard.press('Escape');
+  await page.waitForTimeout(600);
+  const ms4 = await openTimed(page, '#wish-others', device, 4);
+  await waitFeed(page);
+  check(`[${tag}] wish screen → feed, CPU ×4: up within 200 ms`, ms4 < 200, `${ms4} ms`);
+  check(`[${tag}] wish screen → feed, CPU ×4: still no errors`, errors.length === 0, errors.join(' | '));
+  await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
 
+  check(`[${tag}] the draft is still there after the feed`, (await page.inputValue('#wish-input')) === 'a draft');
   await page.fill('#wish-input', 'OWW_LIKES_TEST a wish made in the test');
   await page.evaluate(() => document.activeElement && document.activeElement.blur());
   await page.waitForSelector('#wish-hold.ready');

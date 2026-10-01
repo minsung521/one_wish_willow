@@ -24,10 +24,10 @@ const LAST_KEY = 'oww_last_likes';
 const SVG = 'http://www.w3.org/2000/svg';
 
 const ONLY_YOU = 'Only you can see this for now.';
-const CTA = "Want to know how many people wish for this too? We'll email you.";
+const PLACEHOLDER = 'Email me when it gets ♥';
 const FINE = 'Only for this. Deleted after 6 months.';
-const NOTIFY = 'Notify me';
-const DONE = "Got it! We'll write to you.";
+const NOTIFY = 'Notify';
+const DONE = "✓ We'll email you.";
 
 // ------------------------------------------------------------------ data
 
@@ -149,30 +149,57 @@ export function heart(className = 'heart') {
   return svg;
 }
 
-const wishedFor = (n) => `${n} ${n === 1 ? 'person' : 'people'} wished for this too.`;
-const since = (d) => `+${d} since your last visit`;
+/** "+3 new", or nothing when it didn't grow (or this is the first look). */
+function sinceBadge(delta) {
+  if (!(delta > 0)) return null;
+  const d = document.createElement('span');
+  d.className = 'likes-since';
+  d.textContent = `+${delta} new`;
+  return d;
+}
 
-/** "♥ 12 people wished for this too." with "(+3 since your last visit)" when it grew. */
-function countLine(className, likes, delta) {
-  const p = document.createElement('p');
-  p.className = className;
-  p.append(heart(), document.createTextNode(` ${wishedFor(likes)}`));
-  if (delta > 0) {
-    const d = document.createElement('span');
-    d.className = 'likes-since';
-    d.textContent = ` (${since(delta)})`;
-    p.append(d);
-  }
-  return p;
+/**
+ * Long wishes are cut to a few lines; a tap on the text shows all of it and
+ * another tap folds it again. Only texts that really overflow get the tap,
+ * worked out for all of them at once after they are on the page: every
+ * height is read first, then the attributes are written, so the list is laid
+ * out once rather than once per wish.
+ *
+ * @param {HTMLElement[]} els texts already in the document, clamped by CSS
+ */
+export function makeExpandable(els) {
+  const over = els.map((el) => el.scrollHeight > el.clientHeight + 1);
+  els.forEach((el, i) => {
+    if (!over[i]) return;
+    el.classList.add('can-open');
+    el.tabIndex = 0;
+    el.setAttribute('role', 'button');
+    el.setAttribute('aria-expanded', 'false');
+    const toggle = () => {
+      const open = !el.classList.contains('open');
+      el.classList.toggle('open', open);
+      el.setAttribute('aria-expanded', String(open));
+    };
+    el.addEventListener('click', toggle);
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggle();
+      }
+    });
+  });
 }
 
 // ------------------------------------------------------------------ the card in the feed
 
 /**
- * The visitor's own wish, pinned at the top of the feed: highlighted, a
- * count but no heart to press. Approved: "♥ 12 people wished for this too.";
- * otherwise only they can see it, and no count. Under it, unless an email is
- * already in for this client_id, the inline email ask (MIN-158's storage).
+ * The visitor's own wish, pinned at the top of the feed and no bigger than a
+ * feed row or two: a small "Your wish" label, the wish on one line (a tap
+ * opens it), and on the right ♥ and the number with "+3 new" (no heart to
+ * press). Not approved: "Only you can see this for now." beside the label
+ * and no number. Under it, unless an email is already in for this client_id,
+ * a one-line field (MIN-158's storage; its notice shows while the field has
+ * focus).
  *
  * @param {HTMLElement} root the empty container
  * @param {{ wish: object, email_submitted: boolean }} data from loadMyWish()
@@ -185,73 +212,84 @@ export function renderMyWish(root, data, screen) {
   card.className = 'my-wish';
   card.setAttribute('aria-label', 'Your wish');
 
-  const kicker = document.createElement('p');
-  kicker.className = 'my-wish-kicker';
-  kicker.textContent = 'Your wish';
+  const main = document.createElement('div');
+  main.className = 'my-wish-main';
+  const label = document.createElement('p');
+  label.className = 'my-wish-label';
+  label.textContent = 'Your wish';
+  if (!approved) {
+    const priv = document.createElement('span');
+    priv.className = 'my-wish-private';
+    priv.textContent = ONLY_YOU;
+    label.append(' ', priv);
+  }
   const text = document.createElement('p');
   text.className = 'my-wish-text ph-no-capture ph-mask';
   text.textContent = wish.text; // never interpret a submitted wish as HTML
-  card.append(kicker, text);
+  main.append(label, text);
+
+  const row = document.createElement('div');
+  row.className = 'my-wish-row';
+  row.append(main);
 
   let delta = null;
   if (approved) {
     delta = likeDelta(wish.likes);
-    card.append(countLine('my-wish-count', wish.likes, delta));
+    const count = document.createElement('p');
+    count.className = 'my-wish-count';
+    if (wish.likes === 0) count.classList.add('zero');
+    const n = document.createElement('span');
+    n.className = 'my-wish-n';
+    n.append(heart(), ` ${wish.likes}`);
+    count.append(n);
+    const badge = sinceBadge(delta);
+    if (badge) count.append(badge);
+    count.setAttribute('aria-label', `${wish.likes} likes${delta > 0 ? `, ${delta} new` : ''}`);
+    row.append(count);
     rememberShown(wish.likes);
-  } else {
-    const p = document.createElement('p');
-    p.className = 'my-wish-private';
-    p.textContent = ONLY_YOU;
-    card.append(p);
   }
-
-  if (!data.email_submitted) card.append(emailAsk(screen));
+  card.append(row);
+  if (!data.email_submitted) card.append(emailRow(screen));
   root.replaceChildren(card);
   root.hidden = false;
+  makeExpandable([text]);
 
   track('my_wish_viewed', { status: approved ? 'approved' : 'pending', ...countProps(wish, delta) });
-  if (!data.email_submitted) track('email_cta_shown');
 }
 
-/** The ask, a line to tap; the field opens in the card itself (no dialog, no toast). */
-function emailAsk(screen) {
+/**
+ * The email ask as one line: the field and its button, nothing to read
+ * first. email_cta_shown goes once the line is actually on screen.
+ */
+function emailRow(screen) {
   const box = document.createElement('div');
   box.className = 'my-wish-email';
-  const formId = 'my-wish-email-form';
-
-  const ask = document.createElement('button');
-  ask.type = 'button';
-  ask.className = 'my-wish-ask';
-  ask.textContent = CTA;
-  ask.setAttribute('aria-expanded', 'false');
-  ask.setAttribute('aria-controls', formId);
 
   const form = document.createElement('form');
-  form.id = formId;
   form.className = 'my-wish-form';
   form.noValidate = true;
-  form.hidden = true;
   const input = document.createElement('input');
-  Object.assign(input, { type: 'email', name: 'email', placeholder: 'your@email.com', autocomplete: 'email', maxLength: 254, spellcheck: false });
-  input.className = 'interest-input ph-no-capture ph-mask';
-  input.setAttribute('aria-label', 'Your email');
+  Object.assign(input, { type: 'email', name: 'email', placeholder: PLACEHOLDER, autocomplete: 'email', maxLength: 254, spellcheck: false });
+  input.className = 'my-wish-input ph-no-capture ph-mask';
+  input.setAttribute('aria-label', 'Your email, to hear when your wish gets likes');
   input.setAttribute('inputmode', 'email');
   input.setAttribute('autocapitalize', 'off');
   input.setAttribute('enterkeyhint', 'send');
   input.setAttribute('aria-describedby', 'my-wish-fine my-wish-error');
+  const submit = document.createElement('button');
+  submit.type = 'submit';
+  submit.className = 'my-wish-submit';
+  submit.textContent = NOTIFY;
+  form.append(input, submit);
+
   const fine = document.createElement('p');
   fine.id = 'my-wish-fine';
-  fine.className = 'interest-fine';
+  fine.className = 'my-wish-fine';
   fine.textContent = FINE;
   const error = document.createElement('p');
   error.id = 'my-wish-error';
-  error.className = 'interest-error';
+  error.className = 'my-wish-error';
   error.setAttribute('role', 'alert');
-  const submit = document.createElement('button');
-  submit.type = 'submit';
-  submit.className = 'interest-submit';
-  submit.textContent = NOTIFY;
-  form.append(input, fine, error, submit);
 
   const done = document.createElement('p');
   done.className = 'my-wish-done';
@@ -264,13 +302,6 @@ function emailAsk(screen) {
     if (msg) input.setAttribute('aria-invalid', 'true');
     else input.removeAttribute('aria-invalid');
   };
-  ask.addEventListener('click', () => {
-    if (!form.hidden) return;
-    form.hidden = false;
-    ask.setAttribute('aria-expanded', 'true');
-    input.focus({ preventScroll: true });
-    form.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  });
   input.addEventListener('input', () => { if (input.getAttribute('aria-invalid') === 'true') showError(''); });
   let busy = false;
   form.addEventListener('submit', async (e) => {
@@ -293,8 +324,9 @@ function emailAsk(screen) {
       track('email_submitted', { screen, source: 'feed_my_wish' });
       emailLeft();
       input.value = '';
-      ask.hidden = true;
       form.hidden = true;
+      fine.hidden = true;
+      error.hidden = true;
       done.hidden = false;
       done.tabIndex = -1;
       done.focus({ preventScroll: true });
@@ -303,17 +335,26 @@ function emailAsk(screen) {
     }
   });
 
-  box.append(ask, form, done);
+  if (typeof IntersectionObserver === 'function') {
+    const io = new IntersectionObserver((entries) => {
+      if (!entries.some((en) => en.isIntersecting)) return;
+      io.disconnect();
+      track('email_cta_shown');
+    }, { threshold: 0.6 });
+    io.observe(form);
+  } else track('email_cta_shown');
+
+  box.append(form, fine, error, done);
   return box;
 }
 
 // ------------------------------------------------------------------ the revisit toast
 
 /**
- * On the revisit screen only, once the visitor's own wish is known: how many
- * people wished for it too and the way to the feed. With no likes yet (or
- * not approved), only the button. It stays until closed (×) and sits at the
- * top, clear of the lines in the middle and of Share at the bottom.
+ * On the revisit screen only, once the visitor's own wish is known:
+ * "Your wish got ♥ 12  +3 new" and the way to the feed. With no likes yet
+ * (or not approved), only the button. It stays until closed (×) and sits at
+ * the top, clear of the lines in the middle and of Share at the bottom.
  */
 export class RevisitToast {
   /** @param {{ onGo: () => void }} hooks onGo: the button was pressed */
@@ -337,9 +378,12 @@ export class RevisitToast {
     let delta = null;
     if (counted) {
       delta = likeDelta(wish.likes);
-      this.line.replaceWith(countLine('likes-toast-line', wish.likes, delta));
-      this.line = this.root.querySelector('.likes-toast-line');
-      this.line.id = 'likes-toast-line';
+      const n = document.createElement('span');
+      n.className = 'likes-toast-n';
+      n.append(heart(), ` ${wish.likes}`);
+      this.line.replaceChildren('Your wish got ', n);
+      const badge = sinceBadge(delta);
+      if (badge) this.line.append(' ', badge);
       rememberShown(wish.likes);
     }
     this.line.hidden = !counted;

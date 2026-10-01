@@ -720,25 +720,66 @@ body {
 }
 
 /* ------------------------------------------------------------------ */
-/* Likes (MIN-160): the heart, the visitor's own wish, the revisit toast */
+/* Likes (MIN-160): rows with a heart, the visitor's own wish, the toast */
 /* ------------------------------------------------------------------ */
 
 .heart { width: 1em; height: 1em; vertical-align: -0.14em; fill: var(--red); }
 
-/* under each wish: a heart and a number, quiet until pressed */
+/* With likes the feed reads as rows: the wish on the left, its heart on the
+   right at the height of the first line, closer together than before. */
+.social-list.rows .social-wish {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 16px 0 15px;
+  text-align: left;
+}
+.social-list.rows .social-wish + .social-wish::before {
+  left: 0;
+  margin-left: 0;
+  width: 100%;
+  height: 1px;
+  border-radius: 0;
+  background: rgba(220, 217, 200, 0.08);
+  box-shadow: none;
+  opacity: 1;
+}
+/* at most three lines; a tap opens the rest (js/likes.js makeExpandable) */
+.social-list.rows .social-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+.social-list.rows .social-text.open { display: block; -webkit-line-clamp: none; line-clamp: none; overflow: visible; }
+.can-open { cursor: pointer; -webkit-tap-highlight-color: transparent; outline: none; }
+.can-open:focus-visible { box-shadow: 0 0 0 1px var(--ink-soft); border-radius: 4px; }
+
+/* the heart: 44×44 at least, its middle on the first line's middle */
 .social-like {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 52px;
   min-height: 44px;
-  margin: 8px 0 -10px;
-  padding: 0 14px;
+  /* 44px to touch, but only the first line's height in the row */
+  margin: calc((17px * 1.55 - 44px) / 2) -10px calc((17px * 1.55 - 44px) / 2) 0;
+  padding: 0 10px;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: var(--ink-faint);
   font: 700 13px var(--serif);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
   touch-action: manipulation;
@@ -762,84 +803,156 @@ body {
 .social-like.pop .social-like-heart { animation: like-pop 0.34s cubic-bezier(.2,.7,.3,1.4); }
 @keyframes like-pop { 40% { transform: scale(1.28); } }
 
-/* the visitor's own wish, pinned above the others and set apart from them */
-.social-mine { margin: 6px 0 14px; }
+/* grey rows while the first page comes */
+.social-skeleton { margin: 0; }
+.social-skeleton[hidden] { display: none; }
+.social-skeleton-row { display: flex; align-items: flex-start; gap: 18px; padding: 18px 0 17px; }
+.social-skeleton-row + .social-skeleton-row { border-top: 1px solid rgba(220, 217, 200, 0.06); }
+.social-skeleton-lines { flex: 1; display: flex; flex-direction: column; gap: 10px; padding-top: 6px; }
+.social-skeleton-lines span,
+.social-skeleton-heart {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  background: rgba(220, 217, 200, 0.07);
+  animation: social-breathe 1.6s ease-in-out infinite;
+}
+.social-skeleton-heart { flex: 0 0 auto; width: 34px; margin-top: 6px; }
+.social-status-quiet {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* the visitor's own wish: one row, set apart, pinned above the others */
+.social-mine { margin: 2px 0 6px; text-align: left; }
 .social-mine[hidden] { display: none; }
 .my-wish {
-  padding: 22px 20px 20px;
-  border: 1px solid rgba(220, 217, 200, 0.34);
-  border-radius: 18px;
+  padding: 10px 14px 12px;
+  border: 1px solid rgba(220, 217, 200, 0.3);
+  border-radius: 14px;
   background:
-    radial-gradient(120% 90% at 50% 0%, rgba(232, 184, 119, 0.11), rgba(232, 184, 119, 0) 70%),
+    radial-gradient(120% 120% at 0% 0%, rgba(232, 184, 119, 0.10), rgba(232, 184, 119, 0) 70%),
     #0d0b09;
-  box-shadow: 0 0 36px rgba(232, 184, 119, 0.07);
-  animation: social-in 0.9s ease both;
+  animation: social-in 0.6s ease both;
 }
-.my-wish-kicker {
+.my-wish-row { display: flex; align-items: flex-start; gap: 10px; }
+.my-wish-main { flex: 1 1 auto; min-width: 0; }
+.my-wish-label {
   margin: 0;
-  font-size: 10.5px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.34em;
-  text-indent: 0.34em;
+  line-height: 1.6;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--red);
 }
+.my-wish-private {
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--ink-soft);
+}
 .my-wish-text {
-  max-width: 28em;
-  margin: 12px auto 0;
+  margin: 1px 0 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: keep-all;
   font-style: italic;
-  font-size: clamp(17px, 4.6vw, 20px);
-  line-height: 1.6;
-  color: var(--ink);
-}
-.my-wish-count,
-.my-wish-private {
-  margin: 14px 0 0;
-  text-wrap: balance;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 16px;
   line-height: 1.5;
   color: var(--ink);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  overflow: hidden;
 }
-.my-wish-private { font-weight: 600; color: var(--ink-soft); }
-.likes-since { font-weight: 600; color: var(--ink-soft); white-space: nowrap; }
-/* the increase on a line of its own, under the count */
-.my-wish-count .likes-since,
-.likes-toast-line .likes-since { display: block; margin-top: 2px; font-size: 12.5px; }
-.my-wish-email { margin: 14px 0 0; padding-top: 6px; border-top: 1px solid rgba(220, 217, 200, 0.12); }
-.my-wish-ask {
-  display: block;
-  width: 100%;
-  min-height: 44px;
+.my-wish-text.open { display: block; -webkit-line-clamp: none; line-clamp: none; overflow: visible; }
+.my-wish-count {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.my-wish-count.zero { color: var(--ink-faint); }
+.my-wish-count.zero .heart { fill: currentColor; }
+.likes-since {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ember);
+  white-space: nowrap;
+}
+
+/* the email ask: one line, the field and its button; the notice only while typing */
+.my-wish-email { margin: 10px 0 0; }
+.my-wish-form { display: flex; gap: 8px; margin: 0; }
+.my-wish-form[hidden], .my-wish-fine[hidden], .my-wish-error[hidden], .my-wish-done[hidden] { display: none; }
+.my-wish-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 44px;
   margin: 0;
-  padding: 8px 4px 0;
+  padding: 0 14px;
+  border: 1px solid rgba(220, 217, 200, 0.22);
+  border-radius: 999px;
+  background: rgba(220, 217, 200, 0.04);
+  color: var(--ink);
+  caret-color: var(--ember);
+  font: 600 16px var(--serif); /* 16px or more, or iOS zooms in on focus */
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color 0.3s ease;
+}
+.my-wish-input::placeholder { color: rgba(220, 217, 200, 0.38); font-size: 14px; }
+.my-wish-input:focus { border-color: rgba(220, 217, 200, 0.6); }
+.my-wish-input[aria-invalid="true"] { border-color: var(--red); }
+.my-wish-submit {
+  flex: 0 0 auto;
+  height: 44px;
+  margin: 0;
+  padding: 0 16px;
   border: 0;
-  background: transparent;
-  color: var(--ink-soft);
-  font: 600 13px/1.5 var(--serif);
-  text-wrap: balance;
-  text-decoration: underline;
-  text-decoration-color: rgba(220, 217, 200, 0.3);
-  text-underline-offset: 4px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #0b0a09;
+  font: 800 11px var(--serif);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   cursor: pointer;
   touch-action: manipulation;
   outline: none;
 }
-.my-wish-ask:hover,
-.my-wish-ask:focus-visible { color: var(--ink); text-decoration-color: currentColor; }
-.my-wish-ask[hidden], .my-wish-form[hidden], .my-wish-done[hidden] { display: none; }
-.my-wish-form { margin: 12px 0 0; animation: social-in 0.5s ease both; }
-.my-wish-form .interest-submit { margin-top: 14px; }
-.my-wish-done {
-  margin: 14px 0 2px;
-  font-family: var(--display);
-  font-size: 19px;
-  line-height: 1.25;
-  color: var(--ink);
+.my-wish-submit:focus-visible { box-shadow: 0 0 0 2px #0b0a09, 0 0 0 4px var(--ink); }
+.my-wish-submit:disabled { opacity: 0.5; cursor: default; }
+.my-wish-fine {
+  display: none;
+  margin: 6px 0 0 14px;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  color: var(--ink-faint);
 }
+.my-wish-email:focus-within .my-wish-fine:not([hidden]) { display: block; }
+.my-wish-error { margin: 6px 0 0 14px; font-size: 12.5px; font-weight: 700; color: var(--ink); }
+.my-wish-error:empty { display: none; }
+.my-wish-done { margin: 0; font-size: 13px; font-weight: 700; line-height: 1.6; color: var(--ink-soft); }
 .my-wish-done:focus { outline: none; }
 
 /* the revisit screen: at the top, clear of the lines in the middle and of Share at the foot */
@@ -849,7 +962,7 @@ body {
   left: 50%;
   z-index: 38;
   width: min(340px, calc(100vw - 32px));
-  padding: 14px 16px 14px;
+  padding: 12px 16px 14px;
   border: 1px solid rgba(220, 217, 200, 0.3);
   border-radius: 18px;
   background: rgba(11, 10, 9, 0.88);
@@ -880,13 +993,13 @@ body {
 .likes-toast-close:hover,
 .likes-toast-close:focus-visible { color: var(--ink); }
 .likes-toast-line {
-  margin: 2px 30px 12px;
-  text-wrap: balance;
-  font-size: 14px;
+  margin: 4px 30px 12px;
+  font-size: 15px;
   font-weight: 700;
-  line-height: 1.45;
+  line-height: 1.4;
   color: var(--ink);
 }
+.likes-toast-n { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .likes-toast-line[hidden] { display: none; }
 .likes-toast.bare { padding: 10px 46px 10px 12px; }
 .likes-toast-go {
@@ -914,7 +1027,7 @@ body {
 .likes-toast-go:hover,
 .likes-toast-go:focus-visible { border-color: var(--ink); }
 @media (prefers-reduced-motion: reduce) {
-  .social-like.pop .social-like-heart, .my-wish, .my-wish-form { animation: none; }
+  .social-like.pop .social-like-heart, .my-wish, .social-skeleton-lines span, .social-skeleton-heart { animation: none; }
   .likes-toast, .likes-toast.on { transform: translateX(-50%); }
 }
 

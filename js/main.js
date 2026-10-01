@@ -885,9 +885,42 @@ function render3D() {
   if (pieces.length) stage.showHalves(pieces.map((p) => p.originPose()), L, pieces.map((p) => p.spin || 0));
   drawBox();
   stage.setGain(halvesGain);
-  stage.render();
-  ctx.drawImage(stage.canvas, 0, 0, W, H);
+  if (likesOn && STILL_PHASES.has(phase)) {
+    // likes on (MIN-160): the halves lie still here, so the 3D frame is
+    // rendered again only when something in it changes and copied from a 2D
+    // cache otherwise. Re-rendering and copying WebGL every frame kept the
+    // main thread busy enough to hold up taps on these screens.
+    const key = stillKey();
+    if (key !== still.key) {
+      stage.render();
+      if (still.cv.width !== stage.canvas.width || still.cv.height !== stage.canvas.height) {
+        still.cv.width = stage.canvas.width;
+        still.cv.height = stage.canvas.height;
+      }
+      const g = still.cv.getContext('2d');
+      g.clearRect(0, 0, still.cv.width, still.cv.height);
+      g.drawImage(stage.canvas, 0, 0);
+      still.key = key;
+    }
+    ctx.drawImage(still.cv, 0, 0, W, H);
+  } else {
+    still.key = null;
+    stage.render();
+    ctx.drawImage(stage.canvas, 0, 0, W, H);
+  }
   if (showStick && !opening && frac && st.crack > 0) drawCrack3D();
+}
+
+// Screens where the 3D scene holds still once the halves have landed.
+const STILL_PHASES = new Set(['wish', 'done', 'already']);
+const still = { key: null, cv: document.createElement('canvas') };
+/** Everything the 3D frame depends on there; a change means rendering it again. */
+function stillKey() {
+  const poses = pieces.map((p) => {
+    const o = p.originPose();
+    return `${o.x.toFixed(2)},${o.y.toFixed(2)},${o.ang.toFixed(4)},${(p.spin || 0).toFixed(4)}`;
+  });
+  return `${W}x${H}@${dpr}|${stage.canvas.width}x${stage.canvas.height}|${halvesGain.toFixed(3)}|${L.toFixed(2)}|${poses.join(';')}`;
 }
 
 /** A hairline crack opening from the side under tension. */
@@ -1263,7 +1296,8 @@ async function boot() {
     const dt = Math.min(MAX_FRAME_DT, Math.max(0, (now - last) / 1000));
     last = now;
     update(dt);
-    render();
+    // likes on (MIN-160): nothing is drawn while the feed covers the whole stage
+    if (!(likesOn && social.covering)) render();
     if (!readyAt) {
       // the stage (box or broken halves) is on screen for the first time
       readyAt = performance.now();

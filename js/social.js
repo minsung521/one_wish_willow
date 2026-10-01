@@ -13,7 +13,7 @@
 import { SOCIAL_API } from './config.js';
 import { track } from './analytics.js';
 import { visit } from './visit.js';
-import { likesOn, loadMyWish, renderMyWish, sendLike, heart } from './likes.js';
+import { likesOn, loadMyWish, renderMyWish, sendLike, heart, makeExpandable } from './likes.js';
 
 const TIMEOUT = 8000;
 const LOADING = 'Gathering wishes…';
@@ -35,6 +35,8 @@ export class SocialFeed {
     this.more = document.getElementById('social-more');
     this.back = document.getElementById('social-back');
     this.mine = document.getElementById('social-mine');
+    this.skeleton = likesOn ? makeSkeleton() : null;
+    if (this.skeleton) this.list.before(this.skeleton);
     this.onOpen = onOpen;
     this.onClose = onClose;
     this.cursor = null;
@@ -75,15 +77,44 @@ export class SocialFeed {
     }
     this.dlg.scrollTop = 0;
     this.back.focus({ preventScroll: true });
-    if (likesOn) this._mine(screen, entry);
-    else track('social_feed_opened', { screen });
+    if (likesOn) {
+      // The tap only puts the feed's frame up (with a few grey rows); the
+      // requests, the event and the rest wait until that frame is painted.
+      this._skeleton(true);
+      const generation = this.generation;
+      afterPaint(() => {
+        this._mine(screen, entry);
+        if (generation !== this.generation) return; // closed meanwhile
+        if (this.onOpen) this.onOpen(screen);
+        this.load();
+      });
+      return;
+    }
+    track('social_feed_opened', { screen });
     if (this.onOpen) this.onOpen(screen);
     this.load();
+  }
+
+  /** Whether the feed is up, covering the stage (main.js stops drawing it meanwhile). */
+  get covering() {
+    return this.dlg.open;
+  }
+
+  _skeleton(on) {
+    if (!this.skeleton) return;
+    this.skeleton.hidden = !on;
+    // the status line still says "Gathering wishes…" to screen readers
+    this.status.classList.toggle('social-status-quiet', on);
   }
 
   /** The visitor's own wish above the list, and the opening event once it is known. */
   async _mine(screen, entry) {
     const generation = this.generation;
+    if (screen === 'wish') {
+      // the wish screen: the wish isn't made yet, so there is nothing to ask for
+      track('social_feed_opened', { screen, entry: entry || null, has_my_wish: false });
+      return;
+    }
     const data = await loadMyWish();
     const has = !!(data && data.wish);
     // sent even if the feed was closed meanwhile; only the card needs it open
@@ -106,6 +137,7 @@ export class SocialFeed {
     this.request = null;
     this.busy = false;
     this.list.removeAttribute('aria-busy');
+    this._skeleton(false);
     if (this.onClose) this.onClose(this.screen);
     const el = this.opener;
     this.opener = null;
@@ -151,7 +183,9 @@ export class SocialFeed {
       // the server without likes answers the old way: newest first, by cursor
       const mixed = !!this.mix && data.mode === 'mix';
       if (this.mix && !mixed) this.mix.offset = null;
+      this.list.classList.toggle('rows', mixed);
       const items = [];
+      const texts = [];
       for (const wish of data.wishes) {
         if (!wish || typeof wish.text !== 'string' || typeof wish.id !== 'number') continue;
         if (mixed) {
@@ -164,11 +198,18 @@ export class SocialFeed {
         const body = document.createElement('p');
         body.textContent = wish.text; // never interpret a submitted wish as HTML
         item.append(body);
-        if (mixed && typeof wish.likes === 'number') item.append(this._heart(item, wish));
+        if (mixed) {
+          body.className = 'social-text';
+          texts.push(body);
+          if (typeof wish.likes === 'number') item.append(this._heart(item, wish));
+        }
         items.push(item);
       }
       const moreHadFocus = document.activeElement === this.more;
+      this._skeleton(false);
       this.list.append(...items);
+      // which of the new ones overflow their three lines: measured together, once
+      if (texts.length) requestAnimationFrame(() => { if (generation === this.generation) makeExpandable(texts); });
       if (mixed) {
         this.mix.offset = typeof data.next === 'number' && data.next > 0 ? data.next : null;
         this.cursor = this.mix.offset;
@@ -185,6 +226,7 @@ export class SocialFeed {
       }
     } catch {
       if (generation !== this.generation) return;
+      this._skeleton(false);
       this.status.textContent = FAILED;
       this.more.textContent = RETRY;
       this.more.hidden = false;
@@ -258,4 +300,33 @@ export class SocialFeed {
     paint();
     return btn;
   }
+}
+
+/** Run fn once the next frame has been painted. */
+function afterPaint(fn) {
+  requestAnimationFrame(() => setTimeout(fn, 0));
+}
+
+/** A few grey rows standing in for the wishes while the first page comes. */
+function makeSkeleton() {
+  const box = document.createElement('div');
+  box.className = 'social-skeleton';
+  box.setAttribute('aria-hidden', 'true');
+  box.hidden = true;
+  for (const widths of [[92, 64], [80], [96, 88, 40], [70], [86, 52]]) {
+    const row = document.createElement('div');
+    row.className = 'social-skeleton-row';
+    const lines = document.createElement('div');
+    lines.className = 'social-skeleton-lines';
+    for (const w of widths) {
+      const bar = document.createElement('span');
+      bar.style.width = `${w}%`;
+      lines.append(bar);
+    }
+    const dot = document.createElement('span');
+    dot.className = 'social-skeleton-heart';
+    row.append(lines, dot);
+    box.append(row);
+  }
+  return box;
 }

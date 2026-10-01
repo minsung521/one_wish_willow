@@ -1,28 +1,44 @@
 
 == mobile 390×844, touch
-PASS  [m] revisit toast: "9 people wished for this too.", no increase on the first look  (9 people wished for this too.)
+PASS  [m] revisit toast: "Your wish got ♥ 9", no increase on the first look  (Your wish got 9)
 PASS  [m] revisit toast: the button is there
-PASS  [m] revisit toast covers none of the revisit screen  ({"top":14,"bottom":122.296875,"left":25,"right":365})
+PASS  [m] revisit toast covers none of the revisit screen  ({"top":14,"bottom":123,"left":25,"right":365})
 PASS  [m] the revisit lines are unchanged
 PASS  [m] revisit_toast_shown: like_count 9, like_delta null  ({"event":"revisit_toast_shown","props":{"like_count":9,"display_like_count":9,"like_delta":null}})
 PASS  [m] stored the count shown
 PASS  [m] the toast doesn't go away by itself
-PASS  [m] return visit: "12 people… (+3 since your last visit)"  (12 people wished for this too. (+3 since your last visit))
+PASS  [m] return visit: "Your wish got ♥ 12 +3 new"  (Your wish got 12 +3 new)
+PASS  [m] no "people wished for this too" anywhere
 PASS  [m] revisit_toast_shown: like_count 12, like_delta 3
 PASS  [m] revisit_toast_clicked with like_count, like_delta
 PASS  [m] social_feed_opened: entry revisit_toast, has_my_wish  ({"screen":"revisit","entry":"revisit_toast","has_my_wish":true})
-PASS  [m] my wish card: at the top, the wish, the count with the increase  (12 people wished for this too. (+3 since your last visit))
+PASS  [m] my wish card: at the top, the wish, "♥ 12" and "+3 new"  (12 +3 new)
+PASS  [m] my wish card: the wish on one line  (1)
+PASS  [m] my wish card: no taller than two feed rows  (119 vs rows of 75)
 PASS  [m] my wish card: no heart to press, masked in replays
 PASS  [m] my wish is not in the list
 PASS  [m] my_wish_viewed: approved, like_count 12, like_delta 3
-PASS  [m] email ask shown, email_cta_shown sent
+PASS  [m] email: one line, field and button at once ("Email me when it gets ♥", Notify)
+PASS  [m] email_cta_shown sent once the line is on screen
+PASS  [m] my wish card: a tap shows the whole wish  ({"e":"true","lines":2})
+PASS  [m] my wish card: another tap folds it
 PASS  [m] every wish has a heart and a number only
 PASS  [m] the first wish is the most liked (12)  (12)
 PASS  [m] two pages: all 30 others, none twice
+PASS  [m] rows: heart on the right, at least 44×44, centred on the first line  ({"right":true,"w":60.046875,"h":44,"off":0.012500000000045475})
+PASS  [m] "line one…": cut to 3 lines, the text itself untouched (line breaks kept)  ({"can":true,"role":"button","expanded":"false","lines":3})
+PASS  [m] "line one…": a tap shows all of it  (8 lines)
+PASS  [m] "line one…": the heart beside it doesn't fold it
+PASS  [m] "line one…": another tap folds it to 3 lines
+PASS  [m] "매일 아침…": cut to 3 lines, the text itself untouched (line breaks kept)  ({"can":true,"role":"button","expanded":"false","lines":3})
+PASS  [m] "매일 아침…": a tap shows all of it  (4 lines)
+PASS  [m] "매일 아침…": the heart beside it doesn't fold it
+PASS  [m] "매일 아침…": another tap folds it to 3 lines
+PASS  [m] wishes of three lines or less get no tap to open  (25 short)
 PASS  [m] like: +1 at once, pressed
 PASS  [m] like: the little beat runs
 PASS  [m] like: one row in likes
-PASS  [m] wish_liked: wish_id, position 2, slot random  ({"wish_id":28,"position":2,"slot":"random"})
+PASS  [m] wish_liked: wish_id, position 2, slot random  ({"wish_id":25,"position":2,"slot":"random"})
 PASS  [m] two quick taps: still liked, still one row
 PASS  [m] offline unlike: shown at once…
 PASS  [m] …then back to liked, count restored
@@ -32,12 +48,12 @@ PASS  [m] after a reload: the card shows no increase (nothing new)
 PASS  [m] unlike: no row
 PASS  [m] wish_unliked: wish_id, position, slot
 PASS  [m] after a reload: not liked  (false)
-PASS  [m] email: the field opens inside the card, no dialog
-PASS  [m] email: the 6-month notice is under the field
+PASS  [m] email: the 6-month notice shows while the field has focus
 PASS  [m] email: a bad address is refused
+PASS  [m] email: the line becomes "✓ We'll email you."
 PASS  [m] email: stored for this client_id, lower-cased
 PASS  [m] email_submitted: source feed_my_wish, no address
-PASS  [m] email in: the card no longer asks
+PASS  [m] email in: the next time, no email line at all
 PASS  [m] × closes the toast
 PASS  [m] Share still there after closing it
 PASS  [m] my wish's text never reached an analytics call
@@ -48,9 +64,16 @@ PASS  [m] pending card: "Only you can see this for now.", no count
 PASS  [m] my_wish_viewed: pending
 PASS  [m] pending: nothing stored for the increase
 PASS  [m] approved, 0 likes: toast has only the button
+PASS  [m] approved, 0 likes: the card shows a faint ♥ 0
 PASS  [m] no wish found: no toast
+PASS  [m] wish screen → feed: up within 200 ms  (80 ms)
+PASS  [m] wish screen → feed: no errors
+PASS  [m] wish screen → feed: no request for a wish that isn't made yet  (/api/social)
 PASS  [m] wish screen: entry input_screen, has_my_wish false
 PASS  [m] no wish yet: no card
+PASS  [m] wish screen → feed, CPU ×4: up within 200 ms  (72 ms)
+PASS  [m] wish screen → feed, CPU ×4: still no errors
+PASS  [m] the draft is still there after the feed
 PASS  [m] the ending is as it was: lines, Share, no likes toast  ({"main":"Wait up to 24 hours for your wish to come true.","sub":"After granting your wish, the One Wish Willow™ loses its magical properties.","toast":false,"share":"Share","others":"See others' wishes"})
 PASS  [m] ending: entry final, my (pending) wish pinned
 PASS  [m] switch off: no toast, no card, no hearts
@@ -63,29 +86,40 @@ PASS  [m] switch off: the same requests as main
 PASS  [m] switch off: the same feed event as main
 
 == desktop 1280×800
-PASS  [d] revisit toast: "9 people wished for this too.", no increase on the first look  (9 people wished for this too.)
+PASS  [d] revisit toast: "Your wish got ♥ 9", no increase on the first look  (Your wish got 9)
 PASS  [d] revisit toast: the button is there
-PASS  [d] revisit toast covers none of the revisit screen  ({"top":14,"bottom":122.296875,"left":470,"right":810})
+PASS  [d] revisit toast covers none of the revisit screen  ({"top":14,"bottom":123,"left":470,"right":810})
 PASS  [d] the revisit lines are unchanged
 PASS  [d] revisit_toast_shown: like_count 9, like_delta null  ({"event":"revisit_toast_shown","props":{"like_count":9,"display_like_count":9,"like_delta":null}})
 PASS  [d] stored the count shown
 PASS  [d] the toast doesn't go away by itself
-PASS  [d] return visit: "12 people… (+3 since your last visit)"  (12 people wished for this too. (+3 since your last visit))
+PASS  [d] return visit: "Your wish got ♥ 12 +3 new"  (Your wish got 12 +3 new)
+PASS  [d] no "people wished for this too" anywhere
 PASS  [d] revisit_toast_shown: like_count 12, like_delta 3
 PASS  [d] revisit_toast_clicked with like_count, like_delta
 PASS  [d] social_feed_opened: entry revisit_toast, has_my_wish  ({"screen":"revisit","entry":"revisit_toast","has_my_wish":true})
-PASS  [d] my wish card: at the top, the wish, the count with the increase  (12 people wished for this too. (+3 since your last visit))
+PASS  [d] my wish card: at the top, the wish, "♥ 12" and "+3 new"  (12 +3 new)
+PASS  [d] my wish card: the wish on one line  (1)
+PASS  [d] my wish card: no taller than two feed rows  (119 vs rows of 75)
 PASS  [d] my wish card: no heart to press, masked in replays
 PASS  [d] my wish is not in the list
 PASS  [d] my_wish_viewed: approved, like_count 12, like_delta 3
-PASS  [d] email ask shown, email_cta_shown sent
+PASS  [d] email: one line, field and button at once ("Email me when it gets ♥", Notify)
+PASS  [d] email_cta_shown sent once the line is on screen
+PASS  [d] my wish card: the wish fits its one line, so no tap to open
 PASS  [d] every wish has a heart and a number only
 PASS  [d] the first wish is the most liked (12)  (12)
 PASS  [d] two pages: all 30 others, none twice
+PASS  [d] rows: heart on the right, at least 44×44, centred on the first line  ({"right":true,"w":60.046875,"h":44,"off":0.012500000000045475})
+PASS  [d] "line one…": cut to 3 lines, the text itself untouched (line breaks kept)  ({"can":true,"role":"button","expanded":"false","lines":3})
+PASS  [d] "line one…": a tap shows all of it  (8 lines)
+PASS  [d] "line one…": the heart beside it doesn't fold it
+PASS  [d] "line one…": another tap folds it to 3 lines
+PASS  [d] wishes of three lines or less get no tap to open  (25 short)
 PASS  [d] like: +1 at once, pressed
 PASS  [d] like: the little beat runs
 PASS  [d] like: one row in likes
-PASS  [d] wish_liked: wish_id, position 2, slot random  ({"wish_id":26,"position":2,"slot":"random"})
+PASS  [d] wish_liked: wish_id, position 2, slot random  ({"wish_id":24,"position":2,"slot":"random"})
 PASS  [d] two quick taps: still liked, still one row
 PASS  [d] offline unlike: shown at once…
 PASS  [d] …then back to liked, count restored
@@ -95,12 +129,12 @@ PASS  [d] after a reload: the card shows no increase (nothing new)
 PASS  [d] unlike: no row
 PASS  [d] wish_unliked: wish_id, position, slot
 PASS  [d] after a reload: not liked  (false)
-PASS  [d] email: the field opens inside the card, no dialog
-PASS  [d] email: the 6-month notice is under the field
+PASS  [d] email: the 6-month notice shows while the field has focus
 PASS  [d] email: a bad address is refused
+PASS  [d] email: the line becomes "✓ We'll email you."
 PASS  [d] email: stored for this client_id, lower-cased
 PASS  [d] email_submitted: source feed_my_wish, no address
-PASS  [d] email in: the card no longer asks
+PASS  [d] email in: the next time, no email line at all
 PASS  [d] × closes the toast
 PASS  [d] Share still there after closing it
 PASS  [d] my wish's text never reached an analytics call
@@ -111,9 +145,16 @@ PASS  [d] pending card: "Only you can see this for now.", no count
 PASS  [d] my_wish_viewed: pending
 PASS  [d] pending: nothing stored for the increase
 PASS  [d] approved, 0 likes: toast has only the button
+PASS  [d] approved, 0 likes: the card shows a faint ♥ 0
 PASS  [d] no wish found: no toast
+PASS  [d] wish screen → feed: up within 200 ms  (72 ms)
+PASS  [d] wish screen → feed: no errors
+PASS  [d] wish screen → feed: no request for a wish that isn't made yet  (/api/social)
 PASS  [d] wish screen: entry input_screen, has_my_wish false
 PASS  [d] no wish yet: no card
+PASS  [d] wish screen → feed, CPU ×4: up within 200 ms  (40 ms)
+PASS  [d] wish screen → feed, CPU ×4: still no errors
+PASS  [d] the draft is still there after the feed
 PASS  [d] the ending is as it was: lines, Share, no likes toast  ({"main":"Wait up to 24 hours for your wish to come true.","sub":"After granting your wish, the One Wish Willow™ loses its magical properties.","toast":false,"share":"Share","others":"See others' wishes"})
 PASS  [d] ending: entry final, my (pending) wish pinned
 PASS  [d] switch off: no toast, no card, no hearts
@@ -125,4 +166,4 @@ PASS  [d] switch off: the feed reads the same as main
 PASS  [d] switch off: the same requests as main
 PASS  [d] switch off: the same feed event as main
 
-122/122 passed
+163/163 passed
