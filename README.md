@@ -63,7 +63,7 @@ At the break, the same pixels are split along a jagged fracture. There are long 
 | `js/storage.js` | One-time rule: state lives in localStorage and is mirrored to a cookie |
 | `js/share.js` | The Share toast on the ending and revisit screens, with *See others' wishes* under Share |
 | `js/interest.js` | The *Not open yet!* dialog behind *See others' wishes*: the email check and the one request to `/api/interest` |
-| `js/config.js` | Constants: PostHog key and host, `APP_VERSION`, the wish, interest and social API paths, `SOCIAL_ENABLED`, the jingle file (`JINGLE_URL`) |
+| `js/config.js` | Constants: PostHog key and host, `APP_VERSION`, the wish, interest, social and like API paths, `SOCIAL_ENABLED`, `LIKES_ENABLED`, the jingle file (`JINGLE_URL`) |
 | `js/visit.js` | Runs before the stage: client id, first visit, first entry, device, in-app browser; starts analytics |
 | `js/analytics.js` | `track()` and PostHog's init options; everything is dropped quietly if the SDK is blocked |
 | `js/keep.js` | The one request that carries the wish text, to `/api/wish` |
@@ -71,13 +71,15 @@ At the break, the same pixels are split along a jagged fracture. There are long 
 | `api/wish.js` | Vercel Function: validates, rate-limits and stores the wish in Postgres |
 | `api/interest.js` | Vercel Function: validates and upserts an email from *See others' wishes* |
 | `js/social.js` | The others' wishes feed behind `SOCIAL_ENABLED` (MIN-122) |
-| `api/social.js` | Vercel Function: the public feed, approved wishes only |
+| `api/social.js` | Vercel Function: the public feed, approved wishes only (mixed order with likes) |
+| `js/likes.js` | Likes behind `LIKES_ENABLED` (MIN-160): the visitor's own wish card, the revisit toast, the like request |
+| `api/like.js`, `api/my-wish.js`, `api/_lib/likes.js` | Vercel Functions: like/unlike, the visitor's own wish; the one display-count rule (MIN-160) |
 | `api/admin/session.js`, `api/admin/wishes.js`, `api/_lib/admin.js` | The maker's login and review API (MIN-183) |
 | `admin/` | The maker's review page, `/admin/` |
 | `vercel.json` | `noindex`, no framing, no caching for `/admin` |
 | `scripts/admin/hash-password.mjs` | Makes `ADMIN_PASSWORD_HASH` (and `ADMIN_SESSION_SECRET`); run locally, not deployed |
 | `scripts/dev/` | A local server for the page and `api/` on a plain Postgres, and the feed/review checks (not deployed) |
-| `db/schema.sql` | The `wishes` and `social_interest` tables (run once in the Neon SQL editor) |
+| `db/schema.sql` | The `wishes`, `social_interest` and `likes` tables (run once in the Neon SQL editor); later changes as dated files beside it (`db/2026-10-01-likes.sql`) |
 | `scripts/og/render.mjs` | Renders `og.png` and the PNG icons from the site (not deployed) |
 
 ### Copy and type
@@ -192,9 +194,37 @@ eval "$(printf 'a-local-test-password' | node scripts/admin/hash-password.mjs --
 node scripts/dev/server.mjs 8080 &
 ADMIN_TEST_PASSWORD=a-local-test-password node scripts/dev/api-test.mjs http://localhost:8080
 ADMIN_TEST_PASSWORD=a-local-test-password node scripts/dev/flow-test.mjs http://localhost:8080 scripts/dev/checks
+# likes (MIN-160): start the server with LIKES_ENABLED=true too (and IP_HASH_SECRET);
+# a second one without it, to check the switch-off answers
+psql -d oww -f db/2026-10-01-likes.sql   # only for a database made before MIN-160
+node scripts/dev/likes-test.mjs http://localhost:8080 http://localhost:8081
+node scripts/dev/likes-flow.mjs http://localhost:8080 scripts/dev/checks/likes [http://localhost:8082]   # 3rd: main, for the switch-off comparison
 ```
 
-Both refuse a `DATABASE_URL` that isn't on localhost (they empty `wishes`). `flow-test.mjs` turns `SOCIAL_ENABLED` on only inside its browsers. `scripts/dev/checks/` keeps the last run's results and screenshots.
+All of them refuse a `DATABASE_URL` that isn't on localhost (they empty `wishes`). `flow-test.mjs` sets `SOCIAL_ENABLED` inside its browsers, and `likes-flow.mjs` turns `LIKES_ENABLED` on there; the files keep their own values. `scripts/dev/checks/` keeps the last run's results and screenshots.
+
+### Likes (MIN-160)
+
+Behind two more switches, both off: `LIKES_ENABLED` in `js/config.js` (the page; it also needs `SOCIAL_ENABLED`) and the `LIKES_ENABLED=true` environment variable (the server). With either off, the feed and the revisit screen are exactly as above: newest first by cursor, no hearts, no card, no toast, and `social_feed_opened` carries only `screen`. The ending (*Wait up to 24 hours…*) is never changed.
+
+**Data** (`db/2026-10-01-likes.sql`, run once in the Neon SQL editor before the server switch is turned on): a `likes` table (`wish_id`, `client_id`, `ip_hash`, `created_at`, unique on `wish_id, client_id`, deleted with its wish), and `wishes.seed_likes` (int, default 0; filled later by MIN-193). The number a wish shows is **real likes + `seed_likes`**, worked out only in `displayLikes()` in `api/_lib/likes.js`. Events get the real count.
+
+| API | |
+|---|---|
+| `POST /api/like` `{ wish_id, client_id, action: 'like' \| 'unlike' }` | `200 { wish_id, liked, likes }`; `403 own_wish`; `404 not_found` (no such wish, or not approved); `429 rate_limited`; `400`; `404 closed` with the switch off. One like per `client_id` per wish (the unique key); per salted daily IP hash (MIN-121's `ip_hash`), at most 5 likes on one wish and 120 likes an hour, under an advisory lock. Unliking is never limited. |
+| `GET /api/my-wish?client_id=` | `200 { wish: { id, text, status: approved\|pending\|rejected, likes, like_count } \| null, email_submitted }`. `likes`/`like_count` are null unless approved; a hidden wish reads as `rejected`; `email_submitted` is whether `social_interest` has this `client_id`. |
+| `GET /api/social?client_id=&seed=&at=&offset=` | With likes: `{ mode: 'mix', wishes: [{ id, text, likes, liked, slot }], next: offset \| null }`, 20 a page, never the visitor's own wish. Without `client_id` (or with the server switch off) it answers as before. |
+
+**Feed order.** Approved wishes only. Three orders of them, most liked (`like`), a shuffle (`random`) and newest (`latest`), are drawn from in turn, like → random → latest → like…, each taking its next wish not drawn yet; `slot` says which. The page keeps one `seed` (the shuffle) and `at` (likes are ranked as of then) for one opening of the feed, so the order holds still while it scrolls, and it also drops any id it has already shown.
+
+**On the page**
+- Each wish in the feed gets a heart and its number (♥ 12), nothing else. A tap turns it on or off at once with a short beat; if the request fails, it goes back. Taps made while a request is out end in one more request.
+- The visitor's own wish is pinned above the list, set apart (outlined, a faint ember glow, *Your wish*), with a number but no heart: approved, *♥ 12 people wished for this too.*; pending or not approved, *Only you can see this for now.* and no number. No wish under this `client_id` (not made yet, or made in another browser): no card.
+- Under it, unless this `client_id` already left an email: *Want to know how many people wish for this too? We'll email you.* A tap opens the field in the card (no dialog), with MIN-158's notice under it; the address goes to `/api/interest`, the same upsert and 6-month rule.
+- The revisit screen, once their wish is found, gets a toast at the top (clear of the lines and of Share at the foot): with one like or more, *♥ 12 people wished for this too.* and *See others' wishes*; with none, or not approved, only the button. It stays until × is pressed; the button opens the feed.
+- *Since your last visit*: the number last shown (card or toast) is kept in `localStorage` as `oww_last_likes`, read once when the page loads, so both show the same increase on one visit: *♥ 12 (+3 since your last visit)*. Nothing is shown when the increase is 0 or there is no stored number yet.
+
+To switch likes on for an environment (Preview first): run `db/2026-10-01-likes.sql`, set `LIKES_ENABLED=true` (and keep `SOCIAL_ENABLED=true`, `IP_HASH_SECRET`) in its environment variables, then `LIKES_ENABLED = true` in `js/config.js` (commit, deploy) and bump `APP_VERSION`. Rolling back is the reverse: the page's switch off, and/or the variable removed.
 
 ### Link previews (MIN-127)
 A shared link has to work as the message on its own, so `<head>` carries the title, description, Open Graph and Twitter Card tags as plain HTML (crawlers don't run JS). `og:url` and the canonical link are always the bare address, even for `?ref=share`. None of this text uses ™: a preview card is seen without the page around it and must not read as the official product.
@@ -266,8 +296,12 @@ PostHog (US Cloud) is loaded by its official snippet in `<head>` and started by 
 | `ending_viewed` | *Wait up to 24 hours…* appears | |
 | `share_clicked` | see Share above | `method`, `result`, `screen` |
 | `social_interest_clicked` | *See others' wishes* pressed (every press) | `screen`: `final` / `revisit` |
-| `email_submitted` | `/api/interest` stored the email (never the address itself) | `screen`: `final` / `revisit` |
-| `social_feed_opened` | the feed opened (only with `SOCIAL_ENABLED` on; replaces `social_interest_clicked`) | `screen`: `final` / `revisit` / `wish` |
+| `email_submitted` | `/api/interest` stored the email (never the address itself) | `screen`: `final` / `revisit` (and `wish`, from the feed); from the card on their own wish also `source: feed_my_wish` |
+| `social_feed_opened` | the feed opened (only with `SOCIAL_ENABLED` on; replaces `social_interest_clicked`) | `screen`: `final` / `revisit` / `wish`; with likes on also `entry` (`final` / `revisit_button` / `revisit_toast` / `input_screen`) and `has_my_wish`, sent once the visitor's own wish has been asked for |
+| `wish_liked` / `wish_unliked` | the server confirmed a like / unlike in the feed (likes on) | `wish_id`, `position` (1 = first in the list), `slot`: `like` / `random` / `latest` |
+| `my_wish_viewed` | the card on their own wish is shown (likes on) | `status`: `approved` / `pending` (pending also for rejected and hidden), `like_count` (real likes, without `seed_likes`), `display_like_count` (what is shown), `like_delta` (null on the first look); the counts are null unless approved |
+| `revisit_toast_shown` / `revisit_toast_clicked` | the toast on the revisit screen / its button (likes on) | `like_count`, `display_like_count`, `like_delta`, as above |
+| `email_cta_shown` | the email ask in their card is shown (likes on) | |
 | `page_hidden` | the page is hidden or closed, once per hide (sent by beacon) | `stage` (the phase: `gate` / `opening` / `intro` / `idle` / `broken` / `wish` / `releasing` / `done` / `already`), `via`: `visibilitychange` / `pagehide`, `ms_since_snap` (null before the snap); in `wish` also `wish_prompt_visible`, `wish_focused`, `wish_has_text` (a boolean, never the text), `wish_hold_early_releases` |
 
 For MIN-177, a typed-but-not-sent drop-off with `wish_hold_early_releases: 0` never tried the Hold pill (didn't know how); one with several let go again and again (found it tedious).
@@ -303,6 +337,6 @@ A small overlay sits top left. It takes no touches except its Reset button, so t
 | `audio` | the `AudioContext` state, live (`none` until the first tap) · `navigator.audioSession` type/state, or `n/a` |
 | `vib` | whether `navigator.vibrate` exists · the `in_app_browser` value events carry |
 
-**Reset** forgets this browser and reloads `?qa=1`: it removes `one-wish-willow`, `oww_client_id`, `oww_visited` and `oww_entry` from `localStorage`, expires the `one-wish-willow` cookie, and resets PostHog's ids (`posthog.reset(true)`, and its stored copy is removed too). The next run starts on the first screen as a first visit with a new `client_id`, so `/api/wish`'s one-wish-per-`client_id` rule doesn't stop it and every run goes all the way to the stored wish. The per-IP limit (20 an hour) still applies.
+**Reset** forgets this browser and reloads `?qa=1`: it removes `one-wish-willow`, `oww_client_id`, `oww_visited`, `oww_entry` and `oww_last_likes` from `localStorage`, expires the `one-wish-willow` cookie, and resets PostHog's ids (`posthog.reset(true)`, and its stored copy is removed too). The next run starts on the first screen as a first visit with a new `client_id`, so `/api/wish`'s one-wish-per-`client_id` rule doesn't stop it and every run goes all the way to the stored wish. The per-IP limit (20 an hour) still applies.
 
 Every event on a `?qa=1` visit carries `qa: true`, the `$pageview` included. It is not carried over: a later visit without `?qa=1` drops it. To leave QA traffic out in PostHog, filter on `qa` is not set. Wishes made in QA mode are stored like any other (the server is not told about QA mode); they and the QA events are to be deleted together later (MIN-141).

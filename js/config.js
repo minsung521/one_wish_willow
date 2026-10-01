@@ -22,6 +22,14 @@ export const INTEREST_API = '/api/interest';
 export const SOCIAL_ENABLED = true;
 export const SOCIAL_API = '/api/social';
 
+// MIN-160 likes switch, off: hearts in the feed, the visitor's own wish
+// pinned at its top, and the toast on the revisit screen. Needs SOCIAL_ENABLED.
+// The server has its own, the LIKES_ENABLED=true environment variable; with
+// either off, the feed and the revisit screen stay as they were.
+export const LIKES_ENABLED = false;
+export const LIKE_API = '/api/like';
+export const MY_WISH_API = '/api/my-wish';
+
 // The box's opening jingle. Set to null to drop the recorded file and use
 // the synthesised jingle in js/audio.js instead (e.g. if the film audio
 // has to come down). Swap the path to use a replacement file.

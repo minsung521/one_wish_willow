@@ -39,7 +39,7 @@ async function call(method, path, { body, cookie, origin = ORIGIN, type = 'appli
 }
 
 async function seed() {
-  await db.query('truncate wishes restart identity');
+  await db.query('truncate wishes restart identity cascade');
   const texts = [
     'I wish my grandmother could see me graduate. 할머니가 졸업식에 오셨으면 좋겠어요.',
     '<img src=x onerror=alert(1)> <b>not bold</b>',

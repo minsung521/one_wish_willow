@@ -12,6 +12,7 @@ import { ShareToast } from './share.js';
 import { InterestDialog } from './interest.js';
 import { SocialFeed } from './social.js';
 import { SOCIAL_ENABLED } from './config.js';
+import { likesOn, loadMyWish, RevisitToast } from './likes.js';
 import { track, setProps } from './analytics.js';
 import { visit } from './visit.js';
 import { keepWish } from './keep.js';
@@ -1025,7 +1026,7 @@ const share = new ShareToast({
   avoid: [ui.credit],
   // the toast's screens are 'ending' / 'revisit'; the event says 'final' / 'revisit'
   onOthers: (screen) => SOCIAL_ENABLED
-    ? social.open(screen === 'revisit' ? 'revisit' : 'final')
+    ? social.open(screen === 'revisit' ? 'revisit' : 'final', screen === 'revisit' ? 'revisit_button' : 'final')
     : interest.open(screen === 'revisit' ? 'revisit' : 'final'),
 });
 
@@ -1033,7 +1034,7 @@ const wishOthers = $('wish-others');
 if (SOCIAL_ENABLED) {
   wishOthers.hidden = false;
   wishOthers.addEventListener('click', () => {
-    if (record.state === 'broken' && phase === 'wish') social.open('wish');
+    if (record.state === 'broken' && phase === 'wish') social.open('wish', 'input_screen');
   });
 }
 
@@ -1219,6 +1220,12 @@ async function boot() {
       share.show('revisit');
     }, 1800);
     showCredit(2200);
+    if (likesOn) {
+      // MIN-160: once their wish is known, at the top, after the lines are up
+      const toast = new RevisitToast({ onGo: () => social.open('revisit', 'revisit_toast') });
+      const asked = loadMyWish();
+      setTimeout(() => asked.then((data) => { if (data && data.wish && phase === 'already') toast.show(data); }), 2400);
+    }
   } else if (record.state === 'broken') {
     // broken, but the wish was never written
     phase = 'wish';

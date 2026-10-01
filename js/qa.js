@@ -23,7 +23,7 @@ const PAINT_MS = 250; // how often the text is refreshed
 
 // what Reset forgets: the one-time record (localStorage + cookie) and this visit's ids
 const RECORD_KEY = 'one-wish-willow';
-const LOCAL_KEYS = [RECORD_KEY, 'oww_client_id', 'oww_visited', 'oww_entry'];
+const LOCAL_KEYS = [RECORD_KEY, 'oww_client_id', 'oww_visited', 'oww_entry', 'oww_last_likes'];
 
 const CSS = `
 .qa {

@@ -12,8 +12,39 @@ const TIMEOUT = 8000;
 const EMAIL = /^[^\s@]{1,64}@[^\s@.]+(\.[^\s@.]+)*\.[^\s@.]{2,}$/;
 const MAX_EMAIL = 254;
 
-const BAD_EMAIL = 'Please check your email address.';
-const FAILED = "Couldn't save it. Please try again.";
+export const BAD_EMAIL = 'Please check your email address.';
+export const FAILED = "Couldn't save it. Please try again.";
+
+/** Whether the page should send this address at all (the server checks it again). */
+export function emailLooksRight(email) {
+  return email.length <= MAX_EMAIL && EMAIL.test(email);
+}
+
+/**
+ * Store the address for this client_id (an upsert on the server). Also used by
+ * the card on the visitor's own wish in the feed (MIN-160).
+ * @returns {Promise<number>} the HTTP status, 0 when the request failed
+ */
+export async function postInterest(email) {
+  const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = setTimeout(() => ctrl && ctrl.abort(), TIMEOUT);
+  let status = 0;
+  try {
+    const res = await fetch(INTEREST_API, {
+      method: 'POST',
+      credentials: 'omit',
+      cache: 'no-store',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email, client_id: visit.clientId }),
+      signal: ctrl ? ctrl.signal : undefined,
+    });
+    status = res.status;
+  } catch {
+    status = 0;
+  }
+  clearTimeout(timer);
+  return status;
+}
 
 export class InterestDialog {
   /**
@@ -97,7 +128,7 @@ export class InterestDialog {
   async _send() {
     if (this.busy) return;
     const email = this.input.value.trim();
-    if (email.length > MAX_EMAIL || !EMAIL.test(email)) {
+    if (!emailLooksRight(email)) {
       this._error(BAD_EMAIL);
       this.input.focus({ preventScroll: true });
       return;
@@ -106,23 +137,7 @@ export class InterestDialog {
     this.busy = true;
     this.submit.disabled = true;
 
-    const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
-    const timer = setTimeout(() => ctrl && ctrl.abort(), TIMEOUT);
-    let status = 0;
-    try {
-      const res = await fetch(INTEREST_API, {
-        method: 'POST',
-        credentials: 'omit',
-        cache: 'no-store',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email, client_id: visit.clientId }),
-        signal: ctrl ? ctrl.signal : undefined,
-      });
-      status = res.status;
-    } catch {
-      status = 0;
-    }
-    clearTimeout(timer);
+    const status = await postInterest(email);
     this.busy = false;
     this.submit.disabled = false;
 

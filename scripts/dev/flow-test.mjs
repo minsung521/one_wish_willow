@@ -6,8 +6,9 @@
 //   (env: DATABASE_URL on localhost, ADMIN_TEST_PASSWORD; FONT_DIR optional:
 //    Google Fonts files saved locally, for machines that can't reach them)
 //
-// The page's SOCIAL_ENABLED switch is turned on only inside these browsers, by
-// rewriting js/config.js on its way in; the file itself stays off.
+// The page's SOCIAL_ENABLED switch is set inside these browsers, by rewriting
+// js/config.js on its way in (on, or off for the switch-off checks), whatever
+// the file itself says.
 
 import { mkdir, readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -47,7 +48,7 @@ const MIXED = [
 ];
 
 async function seed(approved) {
-  await db.query('truncate wishes restart identity');
+  await db.query('truncate wishes restart identity cascade');
   const texts = [];
   for (let i = 0; i < 26; i++) texts.push(i < MIXED.length ? MIXED[i] : `TEST approved wish #${i + 1} — test data`);
   for (let i = 0; i < 26; i++) {
@@ -86,7 +87,12 @@ async function context(device, { social = true, record = null } = {}) {
   await ctx.route('**/js/config.js', async (r) => {
     const res = await r.fetch();
     const text = await res.text();
-    r.fulfill({ response: res, body: social ? text.replace('SOCIAL_ENABLED = false', 'SOCIAL_ENABLED = true') : text });
+    r.fulfill({
+      response: res,
+      body: social
+        ? text.replace('SOCIAL_ENABLED = false', 'SOCIAL_ENABLED = true')
+        : text.replace('SOCIAL_ENABLED = true', 'SOCIAL_ENABLED = false'),
+    });
   });
   if (record) {
     await ctx.addInitScript((rec) => {
