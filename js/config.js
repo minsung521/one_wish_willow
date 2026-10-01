@@ -9,7 +9,7 @@ export const POSTHOG_HOST = 'https://us.i.posthog.com';
 // its own commit, so this is set by hand when releasing: the short hash of the
 // commit that changed the app. (Stored wishes get the deployed commit from the
 // server; this value is only their fallback.)
-export const APP_VERSION = 'ca0c75e';
+export const APP_VERSION = 'dc14eaf';
 
 // Where the wish is kept (api/wish.js).
 export const WISH_API = '/api/wish';
