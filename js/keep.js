@@ -14,8 +14,9 @@ const TIMEOUT = 5000;
 /**
  * @param {string} text the wish, already trimmed
  * @param {number|null} snapToSubmitMs time from the snap to the confirm
+ * @param {boolean} isPrivate keep it off the public feed (never sent to analytics)
  */
-export function keepWish(text, snapToSubmitMs) {
+export function keepWish(text, snapToSubmitMs, isPrivate = false) {
   const t0 = performance.now();
   const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
   let settled = false;
@@ -40,6 +41,7 @@ export function keepWish(text, snapToSubmitMs) {
     utm_source: visit.entry.utm_source,
     snap_to_submit_ms: snapToSubmitMs,
     app_version: APP_VERSION,
+    is_private: isPrivate === true,
   });
   text = null;
 

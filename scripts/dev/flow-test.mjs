@@ -87,12 +87,7 @@ async function context(device, { social = true, record = null } = {}) {
   await ctx.route('**/js/config.js', async (r) => {
     const res = await r.fetch();
     const text = await res.text();
-    r.fulfill({
-      response: res,
-      body: social
-        ? text.replace('SOCIAL_ENABLED = false', 'SOCIAL_ENABLED = true')
-        : text.replace('SOCIAL_ENABLED = true', 'SOCIAL_ENABLED = false'),
-    });
+    r.fulfill({ response: res, body: text.replace(/export const SOCIAL_ENABLED = (true|false);/, `export const SOCIAL_ENABLED = ${!!social};`) });
   });
   if (record) {
     await ctx.addInitScript((rec) => {
@@ -137,6 +132,39 @@ async function wishFlow(device, tag) {
   await page.evaluate(() => document.activeElement && document.activeElement.blur());
   await page.waitForTimeout(1300);
   await shot(page, `${tag}-01-wish-screen-draft`);
+
+  // MIN-194: the private checkbox, one quiet line under the field
+  check(`[${tag}] private checkbox: unchecked by default`, !(await page.isChecked('#wish-private')));
+  {
+    const f = await page.locator('#wish-field').boundingBox();
+    const l = await page.locator('.wish-private').boundingBox();
+    const vw = device.viewport.width;
+    check(`[${tag}] private checkbox: under the field, inside the screen, tap target >= 44px`,
+      l.y >= f.y + f.height && l.x >= 0 && l.x + l.width <= vw && l.height >= 44, `${Math.round(l.x)},${Math.round(l.y)} ${Math.round(l.width)}x${Math.round(l.height)}`);
+    check(`[${tag}] private checkbox: one line of small text`,
+      await page.evaluate(() => { const el = document.querySelector('.wish-private span'); return el.getClientRects().length === 1 && parseFloat(getComputedStyle(el).fontSize) <= 12; }));
+  }
+  const mark = () => page.evaluate(() => {
+    const cs = getComputedStyle(document.getElementById('wish-private'), '::after');
+    return cs.content !== 'none' && parseFloat(cs.width) > 0;
+  });
+  check(`[${tag}] private checkbox: no check mark while unchecked`, !(await mark()));
+  await tap(page, '.wish-private span', device);
+  check(`[${tag}] private checkbox: check mark shows when checked`, await mark());
+  check(`[${tag}] private checkbox: the label toggles it`, await page.isChecked('#wish-private'));
+  await page.waitForTimeout(500);
+  await shot(page, `${tag}-01b-wish-screen-private`);
+  await page.locator('#wish-private').screenshot({ path: join(OUT, `${tag}-01c-private-checkbox-checked.png`) }).catch(() => {});
+  if (!device.hasTouch) {
+    await page.keyboard.press('Shift');
+    await page.focus('#wish-private');
+    check(`[${tag}] private checkbox: keyboard focus-visible ring`,
+      await page.evaluate(() => document.getElementById('wish-private').matches(':focus-visible')));
+    await page.keyboard.press('Space');
+    check(`[${tag}] private checkbox: Space toggles it`, !(await page.isChecked('#wish-private')));
+    await page.keyboard.press('Space');
+    await page.evaluate(() => document.activeElement && document.activeElement.blur());
+  }
 
   // 0 approved: the empty state
   await tap(page, '#wish-others', device);
@@ -198,6 +226,8 @@ async function wishFlow(device, tag) {
   await page.waitForFunction(() => window.__oww && window.__oww.phase === 'done', null, { timeout: 20000 });
   const stored = await db.query("select count(*)::int n, bool_and(moderation_status = 'pending') p from wishes where wish_text like 'OWW_DRAFT%'");
   check(`[${tag}] the wish is stored, as pending`, stored.rows[0].n === 1 && stored.rows[0].p === true);
+  const priv = await db.query("select is_private from wishes where wish_text like 'OWW_DRAFT%'");
+  check(`[${tag}] the wish is stored with is_private = true (box was ticked)`, priv.rows[0].is_private === true);
   check(`[${tag}] after the wish, the wish-screen link is gone`, !(await page.isVisible('#wish-others')));
   await page.waitForSelector('#share.on', { timeout: 20000 });
   await page.waitForTimeout(1300);

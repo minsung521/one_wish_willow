@@ -1083,7 +1083,7 @@ const wish = new WishUI({
   onFocus: () => track('wish_input_focused', { ms_since_snap: msSinceSnap() }),
   onStart: () => track('wish_input_started'),
   onHoldEarly: (props) => track('wish_hold_released_early', props),
-  onConfirm: (text) => {
+  onConfirm: (text, isPrivate) => {
     // the snap may have been on an earlier visit, so wall-clock time
     const snapToSubmit = record.at ? Math.max(0, Date.now() - record.at) : null;
     phase = 'releasing';
@@ -1098,7 +1098,7 @@ const wish = new WishUI({
       snap_to_submit_ms: snapToSubmit,
       hold_early_releases: wish.earlyReleases,
     });
-    keepWish(text, snapToSubmit);
+    keepWish(text, snapToSubmit, isPrivate);
     lightTarget = 0.4;
     lightRate = 0.12;
     halvesGainTarget = FINAL_GAIN;

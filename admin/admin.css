@@ -173,6 +173,7 @@ input[type="password"]:focus { outline: none; border-color: var(--ink); }
 }
 .badge.approved { border-color: rgba(143, 191, 138, 0.6); color: #cfe8cb; }
 .badge.rejected, .badge.hidden { border-color: rgba(196, 36, 31, 0.6); color: #f0c2bf; }
+.badge.private { border-style: dashed; color: var(--ink-faint); }
 .sub { color: var(--ink-faint); }
 .text {
   margin: 10px 0 0;
