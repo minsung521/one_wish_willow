@@ -26,7 +26,7 @@ export const SOCIAL_API = '/api/social';
 // pinned at its top, and the toast on the revisit screen. Needs SOCIAL_ENABLED.
 // The server has its own, the LIKES_ENABLED=true environment variable; with
 // either off, the feed and the revisit screen stay as they were.
-export const LIKES_ENABLED = false;
+export const LIKES_ENABLED = true;
 export const LIKE_API = '/api/like';
 export const MY_WISH_API = '/api/my-wish';
 
