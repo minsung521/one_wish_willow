@@ -11,7 +11,7 @@
 // the order (MIN-196): Popular (the default), Latest or Random, remembered in
 // localStorage. The server sorts and pages by offset.
 
-import { SOCIAL_API } from './config.js';
+import { SOCIAL_API, SOCIAL_ENABLED } from './config.js';
 import { track } from './analytics.js';
 import { visit } from './visit.js';
 import { likesOn, loadMyWish, renderMyWish, sendLike, heart, makeExpandable } from './likes.js';
@@ -61,7 +61,7 @@ export class SocialFeed {
     // most of what a tap on "See others' wishes" costs. Do that once while the
     // page is idle, invisibly and within one task (nothing is painted), so the
     // tap itself only has to show it.
-    if (likesOn) whenIdle(() => this._warm());
+    if (SOCIAL_ENABLED) whenIdle(() => this._warm());
     this.onOpen = onOpen;
     this.onClose = onClose;
     this.cursor = null;
@@ -100,30 +100,26 @@ export class SocialFeed {
     } catch {
       this.dlg.setAttribute('open', ''); // no <dialog> support: shown, just not modal
     }
-    if (likesOn) {
-      // The tap only puts the feed's frame up (with a few grey rows); the
-      // requests, the event and the rest wait until that frame is painted.
-      // Focus and the scroll reset each make the browser lay the page out
-      // there and then, so they wait too (a reopened dialog starts at the top).
-      this._skeleton(true);
-      const generation = this.generation;
-      afterPaint(() => {
-        if (generation === this.generation) {
-          if (this.dlg.scrollTop) this.dlg.scrollTop = 0;
-          this.back.focus({ preventScroll: true });
-        }
-        this._mine(screen, entry);
-        if (generation !== this.generation) return; // closed meanwhile
-        if (this.onOpen) this.onOpen(screen);
-        this.load();
-      });
-      return;
-    }
-    this.dlg.scrollTop = 0;
-    this.back.focus({ preventScroll: true });
-    track('social_feed_opened', { screen });
-    if (this.onOpen) this.onOpen(screen);
-    this.load();
+    // The tap only puts the feed's frame up (with a few grey rows when likes
+    // are on, the loading line when not); the requests, the event and the
+    // rest wait until that frame is painted. Focus and the scroll reset each
+    // make the browser lay the page out there and then, so they wait too (a
+    // reopened dialog starts at the top). MIN-160, for any feed since MIN-195.
+    if (this.skeleton) this._skeleton(true);
+    else this.status.textContent = LOADING;
+    const generation = this.generation;
+    afterPaint(() => {
+      if (generation === this.generation) {
+        if (this.dlg.scrollTop) this.dlg.scrollTop = 0;
+        this.back.focus({ preventScroll: true });
+      }
+      // sent even if the feed was closed meanwhile
+      if (likesOn) this._mine(screen, entry);
+      else track('social_feed_opened', { screen });
+      if (generation !== this.generation) return; // closed meanwhile
+      if (this.onOpen) this.onOpen(screen);
+      this.load();
+    });
   }
 
   _warm() {
