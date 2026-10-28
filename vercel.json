@@ -1,4 +1,7 @@
 {
+  "crons": [
+    { "path": "/api/cron/purge-interest", "schedule": "17 18 * * *" }
+  ],
   "headers": [
     {
       "source": "/admin/(.*)",

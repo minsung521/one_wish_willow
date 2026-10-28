@@ -149,7 +149,9 @@ There is no consent checkbox. It closes with ×, Escape or a tap outside the car
 
 `POST /api/interest` (`api/interest.js`) takes `email` and `client_id` (the same id the wish is stored with) and writes to `social_interest` (`db/schema.sql`), a table of its own apart from `wishes`: `email` (trimmed, lower-cased), `client_id` (primary key), `consented_at`. It is an upsert on `client_id`, so asking again replaces the address and the time and there is only ever one row per person. Answers: `201` stored, `400` malformed, `500` server error. The address never goes into an event, storage or a log.
 
-The dialog promises deletion after 6 months; rows older than that (`consented_at < now() - interval '6 months'`) have to be removed.
+The dialog promises deletion after 6 months, and `api/cron/purge-interest.js` keeps it (MIN-168). Vercel Cron calls `GET /api/cron/purge-interest` once a day at 18:17 UTC (03:17 KST, `crons` in `vercel.json`), and it deletes every row with `consented_at < now() - interval '6 months'`. Each row has its own clock, and asking again resets it (the upsert above). The first rows, from 2026-09-27, go on 2027-03-27.
+
+The route needs a `CRON_SECRET` environment variable (16+ characters) in the Vercel project; Vercel sends it as `Authorization: Bearer <CRON_SECRET>` on every cron call. Without it the route answers `404`, with a wrong header `401`. The log line `interest_purged <n>` carries only how many rows went, never an address. To run it by hand: `curl -H "Authorization: Bearer $CRON_SECRET" https://one-wish-willow-eta.vercel.app/api/cron/purge-interest`.
 
 ### Others' wishes and the review page (MIN-122, MIN-123, MIN-183)
 
